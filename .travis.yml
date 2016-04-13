@@ -1,0 +1,37 @@
+# peep/.travis.yml
+
+language: c
+
+before_install:
+  - uname -a
+  - lsb_release --all
+  - sudo apt-get --assume-yes update
+
+install:
+  - sudo apt-get --assume-yes install mingw32
+  - sudo apt-get --assume-yes install mingw32-binutils
+  - sudo apt-get --assume-yes install mingw32-runtime
+  - sudo apt-get --assume-yes install wine
+
+env:
+  - TRCC=gcc TRCXX=g++
+  - TRCC=clang TRCXX=clang++
+  - TRCC=i586-mingw32msvc-gcc TRCXX=i586-mingw32msvc-g++
+
+script:
+  - export CC=$TRCC
+  - export CXX=$TRCXX
+  - cd $(mktemp -d)
+  - autoreconf -ivf ${TRAVIS_BUILD_DIR}
+  - ${TRAVIS_BUILD_DIR}/configure --prefix=$(mktemp -d)
+  - make
+  - make check
+  - make distcheck
+  - make install
+
+matrix:
+  allow_failures:
+    - env: TRCC=clang TRCXX=clang++
+    - env: TRCC=i586-mingw32msvc-gcc TRCXX=i586-mingw32msvc-g++
+  fast_finish: true
+
