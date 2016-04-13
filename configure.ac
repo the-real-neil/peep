@@ -1,5 +1,4 @@
-#
-# configure.ac
+# peep/configure.ac
 #
 # Author: Michael Gilfix <mgilfix@eecs.tufts.edu>
 #
@@ -8,18 +7,22 @@
 #
 dnl Process this file with autoconf to produce a configure script.
 
-PACKAGE=peepd
+dnl PACKAGE=peepd
 
-MAJOR_VERSION=0
-MINOR_VERSION=5
-PATCH_VERSION="0-rc2"
-VERSION=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}
+dnl MAJOR_VERSION=0
+dnl MINOR_VERSION=5
+dnl PATCH_VERSION="0-rc2"
+dnl VERSION=${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}
 
 dnl Perform initialization process
-AC_INIT(peepd, 0.5.0-rc2, "mgilfix@eecs.tufts.edu")
-AC_CONFIG_SRCDIR([server/mixer.c])
-AC_PREREQ(2.53)
-AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
+AC_PREREQ([2.68])
+AC_INIT([peep],
+        [m4_esyscmd_s([git describe --always --dirty --tags])],
+        [naroza@gmail.com],
+        [peep],
+        [https://github.com/rubicks/peep])
+AC_CONFIG_SRCDIR([server/mixer.h])
+AM_INIT_AUTOMAKE([foreign subdir-objects dist-bzip2 dist-xz tar-pax])
 AM_CONFIG_HEADER([config.h])
 
 dnl Define templates for autoheader constants
@@ -335,6 +338,8 @@ fi
 # End OpenSSL
 #############################################################
 
-AC_CONFIG_FILES([Makefile
-                 server/Makefile])
+dnl AC_CONFIG_FILES([Makefile
+dnl                  server/Makefile])
+
+AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
