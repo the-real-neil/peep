@@ -1,4 +1,4 @@
-# peep
+# peep [![Build Status](https://travis-ci.org/rubicks/peep.svg?branch=master)](https://travis-ci.org/rubicks/peep)
 The Network Auralizer
 
 This github project is a resurrection of the SourceForge project of the same
