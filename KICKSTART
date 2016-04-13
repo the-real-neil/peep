@@ -1,0 +1,143 @@
+GET THE SOURCE ============================================
+
+cvs -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/peep login 
+cvs -z3 -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/peep co peep-0.5.x
+
+sounds :
+http://prdownloads.sourceforge.net/peep/Peep-Sounds-0.5.0.tar.gz?download
+untar them somewhere in a temp space, and take sounds/ from it
+
+COMPILE : ============================================================
+
+Prerequisite :
+(debian)
+for building client : (to be run on monitored host)
+apt-get install libfile-tail-perl libfile-mmagic-perl libnet-ping-external-perl libproc-process-perl libtime-hires-perl libfilesys-diskfree-perl libxml-parser-perl
+
+for building server : (to be run on workstation, the client sends info to the server and the server emits sounds... :-)
+apt-get install libexpat1-dev
+Note : in testing/unstable, libtime-hires-perl is included in perl 
+
+Other distros, using the cpan :
+perl -eshell -MCPAN
+install File::MMagic Net::Ping::External Proc::ProcessTable Time::HiRes XML::Parser Filesys::DiskFree Net::SMTP XML::Parser
+install expat library : expat.sf.net
+
+cd peep-0.5.x/ && ./configure --enable-debug=2      && make
+
+cd peep-0.5.x/client/Net/Peep && perl Makefile.PL && make
+
+
+
+automake 1.4 is not enough if you want to compile from cvs
+(typical error  : configure.ac: 23: required file `./[config.h].in' not found)
+(i used automake 1.7, which is fine)
+
+use gcc-2.95, not gcc-3.x
+
+PLAYING SAMPLE SOUNDS from Peep-Sounds-0.5.0.tar.gz : ====================================================
+
+(apt-get install sox)
+play -c 2 -t raw -r 44100 --size=w -f s <file> 
+
+(apt-get install bplay)
+bplay -s 44100 -b 16 -S <file> 
+for i in * ; echo $i && read a && bplay -s 44100 -b 16 -S $i
+zsh : for i in **/*\.* ; echo $i && read a && bplay -s 44100 -b 16 -S $i
+
+INSTALL THE CONFIG FILE NOW (see below for the content of peep.conf)
+
+LAUNCHING PEEP SERVER ============================================================
+~/work/projects/peep-0.5.x/server/peepd --config=/usr/local/etc/peep/peep.conf --pidfile=/tmp/peep.pid --snd-device=/dev/dsp --nodaemon
+
+
+
+LAUNCHING THE PEEP CLIENT : LOG PARSER ============================================================
+
+server : localhost
+
+cd peep-0.5.x/client/Net/Peep/
+
+perl -Iblib/lib ./bin/logparser --config=/usr/local/etc/peep/peep.conf --nodaemon --debug=9 --server=localhost --port=2001  --class=main --noautodiscovery
+
+other examples : 
+perl -Iblib/lib ./bin/logparser --config=/usr/local/etc/peep/peep.conf --nodaemon --debug=1
+perl -Iblib/lib ./bin/logparser --config=/usr/local/etc/peep/peep.conf --nodaemon --server=natch --port=2001 --debug=9 --class=main --noautodiscovery
+perl -Iblib/lib ./bin/logparser --nodaemon --debug=1
+perl -Iblib/lib ./bin/logparser --config=/usr/local/etc/peep/peep.conf --nodaemon --debug=9 --server=natch --port=2001
+perl -Iblib/lib ./bin/logparser --config=/usr/local/etc/peep/peep.conf --nodaemon --debug=9 --server=albert --port=2001 --noautodiscovery
+perl -Iblib/lib ./bin/logparser --config=/usr/local/etc/peep/peep.conf --nodaemon --debug=5 --server=192.168.6.2 --port=2001 --noautodiscovery
+
+debug=3,4 : almost nothing
+debug=5 : enough
+
+TESTING ========================
+
+ i=1;while [ $i -le 2000 ] ;do i=$[ i + 1 ];echo "sudo test : $i" >> /tmp/test;sleep 5 ;done 
+
+or
+
+ sudo echo $RANDOM
+
+you should then hear the redwing-blackbird sound.
+
+
+
+THE CONFIG FILE ==============================
+---------------------- peep.conf ---------------------
+
+# replace the sound path with yours !
+
+#
+# Peep (the network auralizer) - Main configuration file
+#
+
+general
+  version 0.5.1
+  # Path where the sounds are stored
+  sound-path /usr/local/src/peep/sounds
+end general
+
+class main
+  port 2000
+  server localhost:2001
+end class main
+
+
+#
+# Client configuration for Peep: The Network Auralizer client:
+#   logparser
+
+client logparser
+  class main
+  port 1999
+  default
+    groups  default
+    logfile /var/log/messages,/tmp/test
+  end default
+  config
+    events
+      # Name      Group     Location     Priority   Notification   Pattern      Hosts
+      sudo        default       128         0          info         "sudo"    localhost
+    end events
+  end config
+    notification
+      notification-hosts none
+      notification-recipients youremail@here.com
+      notification-level warn
+    end notification
+end client logparser
+
+------------------------------------------------------------------------
+
+
+ps : note about the client doc :
+http://www.auralizer.com:8080/Documentation/client
+
+ps 2 : note about the server :
+it should print a note about acquiring /dev/dsp...
+it currently hangs if dsp is already taken,
+and wait for it indefinitly (which is fine,
+but it should specificaly say :
+trying to acquire /dev/dsp........
+

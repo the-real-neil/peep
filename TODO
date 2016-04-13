@@ -1,0 +1,8 @@
+Before final 0.5.0:
+  * Get SSL working completely
+
+
+Some Ideas for later:
+  * Take option to write sounds out to raw file so can record to sound file directly
+    rather than playback.
+  * Write EsounD modules

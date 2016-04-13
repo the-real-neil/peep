@@ -1,0 +1,6 @@
+Revision history for Perl extension Net::Peep::Data::Conf::Class::Server.
+
+0.01  Fri Nov  2 22:14:24 2001
+	- original version; created by h2xs 1.20 with options
+		-XA Net::Peep::Data::Conf::Class::Server
+

@@ -1,0 +1,219 @@
+#!/usr/bin/perl
+
+use strict;
+use Carp;
+use Net::Peep::Client;
+use Net::Peep::BC;
+use Net::Peep::Data::Notice;
+
+use constant DEFAULT_SERVER => "localhost";
+use constant DEFAULT_PORT   => 2001;
+
+@main::vols = ( 0,32,64,96,128,154,192,224,255 );
+@main::locs = ( 0,32,64,96,128,154,192,224,255 );
+@main::pris = ( 0,32,64,96,128,154,192,224,255 );
+@main::dits = ( 0,32,64,96,128,154,192,224,255 );
+
+# Set some global defaults.
+$main::volume   = 128;
+$main::location = 128;
+$main::priority = 0;
+$main::dither   = 255;
+
+$main::row1 = '1234567890-=';   $main::row1_shift= '!@#$%^&*()_+';
+$main::row2 = "qwertyuiop[]\\"; $main::row2_shift = 'QWERTYUIOP{}|';
+$main::row3 = "asdfghjkl;'";    $main::row3_shift = 'ASDFGHJKL:"';
+$main::row4 = 'zxcvbnm,./';     $main::row4_shift= 'ZXCVBNM<>?';
+
+# Handlers so we can reset the terminal right before we die.
+# Otherwise, it looks ugly.
+$SIG{'INT'} = \&shutdie;
+$SIG{'QUIT'} = \&shutdie;
+
+# Intialize the client library
+my $client = new Net::Peep::Client;
+$client->name('keytest');
+
+# Parser the command-line options. We make the call with empty
+# arguments because keytest only uses the defaults
+my ($autodiscovery,$port,$server) = (0,DEFAULT_PORT,DEFAULT_SERVER);
+my %options = ('autodiscovery!'=>\$autodiscovery,'port=s'=>\$port,'server=s'=>\$server);
+$client->initialize(%options) || $client->pods();
+
+# now parse the conf file.  no special parsing needs to be done by
+# keytest since it doesn't have its own configuration section, so the
+# parser will be passed a blank code reference.
+$client->parser( sub { } );
+
+# get a Net::Peep::Conf object which is now populated with all of the
+# configuration information found in the peep.conf file as well as the
+# values of the standard command-line options
+my $conf = $client->configure();
+
+# instantiate a Net::Peep::BC object.  Feed it the Net::Peep::Conf object so it
+# knows what kind of environment it's being born into.
+$main::peck = Net::Peep::BC->new($conf);
+
+&main($conf);
+
+sub main {
+
+	my $conf = shift || confess "Error:  Net::Peep::Conf object expected.";
+
+	# Initializing the terminal
+	print "Going into raw mode and mapping keys to server sounds.\n";
+	print "Press esc to exit.\n";
+
+	system ("stty raw -echo") / 256 == 0 or die "couldn't set terminal modes: $!";
+
+	my $ch;
+	while (($ch = getc (STDIN)) ne '') {
+
+		# Check which keyboard row the pressed key belongs to and signal
+		# the server according to the keyboard mappings.
+
+		my $voltmp = index($main::row1, $ch);
+		$main::volume = $main::vols[$voltmp] if $voltmp >= 0 && $voltmp < @main::vols;
+
+		my $loctmp = index($main::row1_shift, $ch);
+		$main::location = $main::locs[$loctmp] if $loctmp >= 0 && $loctmp < @main::locs;
+
+		my $pritmp = index($main::row2_shift, $ch);
+		$main::priority = $main::pris[$pritmp] if $pritmp >= 0 && $pritmp < @main::pris;
+
+		my $dittmp = index($main::row3_shift, $ch);
+		$main::dither = $main::dits[$dittmp] if $dittmp >= 0 && $dittmp < @main::dits;
+
+		my $evttmp = index($main::row2, $ch);
+		&pecker($conf, $ch, 0, $evttmp) if $evttmp >= 0 && $evttmp < length($main::row2);
+
+		my $evttmp = index($main::row3, $ch);
+		&pecker($conf, $ch, 0, $evttmp + length($main::row2)) if $evttmp >= 0 && $evttmp < length($main::row3);
+
+		my $stttmp = index($main::row4, $ch);
+		&pecker($conf, $ch, 1, $stttmp) if $stttmp >= 0 && $stttmp < length($main::row4);
+
+		# Check if 'esc' has been pressed and then exit
+		if (ord($ch) eq 0x1b) {
+			system ("stty -raw -cbreak echo") / 256 == 0 or die "can't reset terminal modes: $!";
+			print "\n";
+			exit 0;
+		}
+	}
+
+} # end sub main
+
+sub pecker {
+	my ($conf, $ch, $type, $sound) = @_;
+
+	my ($events) = $conf->events();
+	my ($states) = $conf->states();
+
+	my @events = $events->event();
+	my @states = $states->state();
+
+	unless (@events && @states) {
+		print STDERR "Error:  There must be at least one event and one state defined in your configuration file.";
+		&shutdie;
+	}
+
+	if ($type == 0) {
+		$sound = $sound < @events ? $events[$sound]->name() : $events[0]->name();
+	} else {
+		$sound = $sound < @states ? $states[$sound]->name() : $states[0]->name();
+	}
+
+	# Print off a formatted message about the event we just played.
+	if ($type == 0) {
+		printf STDERR "\revent(%01d) sound=%16s volume=%03d location=%03d dither=%03d priority=%03d",
+			$type,
+			$sound,
+			$main::volume,
+			$main::location,
+			$main::dither,
+			$main::priority;
+	}
+	else {
+		printf STDERR "\revent(%01d) sound=%16s volume=%03d location=%03d dither=%03d priority=%03d",
+			$type,
+			$sound,
+			$main::volume,
+			$main::location,
+			$main::dither,
+			$main::priority;
+	}
+
+	# Now send off the event to the server
+	my $notice = new Net::Peep::Data::Notice;
+	$notice->client('keytest');
+	$notice->type($type);
+	$notice->sound($sound);
+	$notice->location($main::location);
+	$notice->priority($main::priority);
+	$notice->dither($main::dither);
+	$notice->volume($main::volume);
+	$notice->data($ch);
+	$main::peck->send($notice);
+}
+
+sub shutdie {
+	print STDERR "shutting down...\n";
+	system("stty -raw echo") / 256 == 0 or die "can't reset stty modes: $!";
+}
+
+__END__
+
+=head1 NAME
+
+keytest - Manual event and state generator for Peep: The Network Auralizer
+
+=head1 SYNOPSIS
+
+keytest is a utility for testing and experimenting with a Peep installation.
+It allows you to play server sounds by mapping keys to various events and
+states. The mapping is as follows:
+
+  Row 1234567890     changes the volume of the next state sound.
+  Row qwertyuiop[]\\ plays events 0-12.
+  Row asdfghjkl;'    plays events 13-24.
+  Row zxcvbnm,./     plays states 0-9.
+  Row !@#$%^&*()_+   changes the next stereo location (left - right).
+  Row QWERTYUIOP{}|  changes the next event's priority.
+  Row ASDFGHJKL:"    changes the next event's dither time.
+
+This application allows you to get a good feel for how your sound theme
+sounds all together, as well as server performance.
+
+=head1 OPTIONS
+
+keytest supports the basic client options:
+
+    --server=[HOST]       The host (or IP address) to connect to
+    --port=[PORT NO]      The port to use
+    --debug=[NUMBER]      Enable debugging. (Def:  0)
+    --protocol=[tcp|udp]  The protocol that will be used. (Def: tcp)
+    --silent              Does not produce output.  To eliminate all output,
+                          either the debug option should be set to 0 or
+                          an output file should be specified.
+    --help                Prints a simple help message
+
+=head1 EXAMPLES
+
+  keytest
+
+  keytest --server=localhost --port=2001
+
+=head1 AUTHOR
+
+Michael Gilfix and Alva Couch Copyright (C) 2000
+
+Collin Starkweather <collin.starkweather@colorado.edu>
+
+=head1 SEE ALSO
+
+perl(1), peepd(1), Net::Peep::Client::Logparser,
+Net::Peep::Client::Sysmonitor, peepd.
+
+http://peep.sourceforge.net
+
+=cut

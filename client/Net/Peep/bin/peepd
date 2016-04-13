@@ -1,0 +1,100 @@
+#!/usr/bin/perl -w
+
+use strict;
+use Carp;
+use Data::Dumper;
+use Sys::Hostname;
+use File::Tail;
+use Net::Peep::BC;
+use Net::Peep::Data::Notice;
+use Net::Peep::Client;
+use Net::Peep::Log;
+use Net::Peep::Notifier;
+use Net::Peep::Notification;
+use Net::Peep::Host::Pool;
+
+use vars qw{ $LOGGER $PECKER @EVENTS @TAILS };
+$LOGGER = new Net::Peep::Log;
+
+my $client = new Net::Peep::Client;
+
+$client->name('peepd');
+
+
+$client->parser(sub { my @text = @_; &parse($client,@text); });
+my $conf = $client->configure();
+
+# Register a callback for the main loop
+$LOGGER->debug(9,"Registering callback ...");
+$client->callback(sub { &loop($client,$conf); });
+$LOGGER->debug(9,"\tCallback registered ...");
+
+# Some signal handling to promote clean exits
+$SIG{'INT'} = $SIG{'TERM'} = sub { $client->shutdown(); exit 0; };
+
+$LOGGER->debug(9,"Executing main loop ...");
+$client->MainLoop();
+
+sub loop {
+
+	my $client = shift || "Error:  Net::Peep::Client object not found";
+	my $conf = shift || "Error:  Net::Peep::Conf object not found";
+
+	select(STDOUT);
+
+	$| = 1; # autoflush
+
+	my $nfound;
+
+	return 1;
+
+} # end sub loop
+sub parse {
+
+	my $client = shift || confess "Error:  Net::Peep::Client object not found";
+	my @text = @_;
+	
+	$LOGGER->debug(1,"\t\tParsing events for client [logparser] [".scalar(@text)."] lines ...");
+	
+	my @events = &getConfigSection('events',@text);
+	
+	if ($client->conf()->versionOK()) {
+		
+		while (my $line = shift @events) {
+			next if $line =~ /^\s*#/ || $line =~ /^\s*$/;
+			
+			my $name;
+			if ($line =~ /^\s*([\w-]+)\s+([\w-]+)\s+(\d+)\s+(\d+)\s+(\w+)\s+"(.*)"\s+([\w\-\.]+)/) {
+				
+				my $event = {};
+				$event->{'name'} = $1;
+				$event->{'group'} = $2;
+				$event->{'location'} = $3;
+				$event->{'priority'} = $4;
+				$event->{'notification'} = $5;
+				$event->{'regex'} = $6;
+				$event->{'hosts'} = $7;
+				
+				my $pool = new Net::Peep::Host::Pool;
+				$pool->addHosts($event->{'hosts'});
+				
+				$event->{'pool'} = $pool;
+				
+				push @EVENTS, $event;
+				$LOGGER->debug(1,"\t\t\tClient event [$1] added.");
+				
+			} else { print STDERR "!:  The line [$line] didn't match\n" }
+			
+		}
+		
+	} else {
+
+		confess "You appear to be using a configuration file ".
+		    "version (".$client->conf()->getVersion().") ".
+			"that is no longer supported.";
+
+	}
+	
+	return @text;
+
+} # end sub parse

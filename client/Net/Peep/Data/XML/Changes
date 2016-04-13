@@ -1,0 +1,6 @@
+Revision history for Perl extension Net::Peep::Data::XML.
+
+0.01  Fri Oct 19 21:22:38 2001
+	- original version; created by h2xs 1.20 with options
+		-XA Net::Peep::Data::XML
+

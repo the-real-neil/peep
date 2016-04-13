@@ -1,0 +1,209 @@
+#!/usr/bin/perl
+
+# Redhive: Peep Traffic Monitor
+# pedram amini <pedram@redhive.com, http://pedram.redhive.com>
+
+use strict;
+use Net::Peep::BC;
+use Net::Peep::Log;
+use Net::Peep::Client;
+$|++;
+
+my %C = ();
+my ($conf, $destination, $direction, $service, $source);
+
+# set the print flag.
+my $print_flag = 1;
+
+my $logger = new Net::Peep::Log;
+my $client = new Net::Peep::Client;
+
+# the tcpdump filter. we're looking for only the start of the following types of
+# connections (filtering for SYN flag) and DNS traffic.
+my $filter = "dst port 21 or 22 or 25 or 80 or 110 or 443 and tcp[13] & 2 != 0 "
+           . "or udp dst port 53";
+my $tcpdump = "-nn -t -i eth0 -q -l";
+
+my %options = ( 'filter=s' => \$filter, 'tcpdump=s' => \$tcpdump );
+# take care of some peep requirements.
+$client->name('traffic_monitor');
+$client->initialize(%options) || $client->pods();
+$client->pods("Error:  A filter must be specified.") unless $filter;
+$client->pods("Error:  Arguments must be specified for tcpdump.") unless $tcpdump;
+$client->parser(\&parse);
+$conf = $client->configure();
+
+# start tcpdump. we don't need timestampes (-t). -nn prevents dns lookups and
+# /etc/service lookups for ports. -q suppresses some other output we don't need.
+# -l turns on line buffering, without it our script doesn't get any output.
+# oh yes, i also redirect errors from tcpdump since it likes to print to STDERR.
+open (TCPDUMP, "tcpdump '$filter' $tcpdump 2> /dev/null |");
+
+# main loop.
+while (<TCPDUMP>)   {
+    # remove newline.
+    chomp;
+
+    # extract the information we're interested in.
+    ($direction, $source, undef, $destination, undef) = split / /, $_, 5;
+
+    # strip the ':' from destination.
+    chop($destination);
+
+    # extract the service port type from destination.
+    (undef, undef, undef, undef, $service) = split /\./, $destination, 5;
+
+    if ($print_flag)    {
+        $logger->log("$direction $source $destination - $C{$service}\n");
+    }
+
+    # setup our event message.
+    my $broadcast = Net::Peep::BC->new('traffic_monitor', $conf);
+
+    # send the event to the server.
+    $broadcast->send('traffic_monitor',
+          type=>0,
+          sound=>$C{$service},
+          location=>128,
+          priority=>0,
+          volume=>255);
+}
+
+
+################################################################################
+# parse
+# parses configuration settings from peep.conf
+#
+sub parse {
+    # service         event
+    # 21              tm-ftp
+    # 22              tm-ssh
+    # ...
+    for my $line (@_)   {
+	next if $line =~ /^\s*#/ or $line =~ /^\s*$/;
+        $C{$1} = $2 if ( $line =~ /^\s*(\d+)\s+(tm\-\w+)/ );
+    }
+}
+
+__END__
+
+=head1 NAME
+
+Traffic Monitor - Redhive: Peep Traffic Monitor
+
+=head1 SYNOPSIS
+
+Traffic monitor monitors network traffic via tcpdump, matching output
+with a user-defined filter.
+
+Events are broadcast to the Peep server, peepd, which then translates
+the event into an aural signal such as a chirping bird or laughing
+monkey.
+
+This application is a part of Peep and requires that the Peep Perl
+modules have been installed.
+
+=head1 OPTIONS
+
+Traffic monitor supports the following command-line options:
+
+    --filter=[FILTER] 
+    --tcpdump=[TCPDUMP]
+
+The options describe the filter to apply to C<tcpdump> and (optionally) the
+arguments to supply to C<tcpdump>; for example, to look for the start of ftp,
+smtp, http, pop3, or DNS traffic,
+
+    --filter="dst port 21 or 22 or 25 or 80 or 110 or 443 and tcp[13] & 2 != 0 or udp dst port 53"
+
+Note that if the C<--tcpdump> option is not specified, is called by the monitor
+with the defualt arguments C<-nn -t -i eth0 -q -l>; for example,
+
+    tcpdump 'dst port 80' -nn -t -i eth0 -q -l 2> /dev/null 
+
+(A bit of detail regarding the default C<tcpdump> arguments:  We don't need
+timestamps (C<-t>). C<-nn> prevents DNS lookups and C</etc/service> lookups for
+ports.  C<-q> suppresses some other output we don't need.  C<-l> turns on line
+buffering, without it our script doesn't get any output.  And errors are
+redirected from tcpdump since it likes to print to C<STDERR>.)
+
+See the C<tcpdump> man page for more information.
+
+In addition, the following options are common to all Peep clients:
+
+    --config=[PATH]       Path to the configuration file to use
+    --debug=[NUMBER]      Enable debugging. (Def:  0)
+    --nodaemon            Do not run in daemon mode
+    --pidfile=[PATH]      The file to write the pid out to (Def: /var/run/logparser.pid)
+    --output=[PATH]       The file to log logparser output to (Def: stderr)
+    --noautodiscovery     Disables autodiscovery and enables the server and port options
+    --server=[HOST]       The host (or IP address) to connect to
+    --port=[PORT NO]      The port to use
+    --protocol=[tcp|udp]  The protocol that will be used for client-server communication. 
+                          (Def: tcp)
+    --silent              Does not produce output.  To eliminate all output,
+                          either the debug option should be set to 0 or
+                          an output file should be specified.
+    --help                Prints a simple help message
+
+=head1 CONFIGURATION
+
+Hopefully an example will be sufficient:
+
+  #
+  # redhive: traffic monitor client configuration
+  #
+  client traffic_monitor
+      class home
+      port 1999
+      config
+          # service       event 
+          21              tm-ftp
+          22              tm-ssh
+          25              tm-smtp
+          53              tm-dns
+          80              tm-http
+          110             tm-pop
+          443             tm-https
+      end config
+  end client traffic_monitor
+
+Here are the events I like to use:
+
+  # redhive: traffic monitor
+  tm-ftp       /usr/local/share/peep/sounds/wetlands/events/cardinal-05.* 1
+  tm-ssh       /usr/local/share/peep/sounds/wetlands/events/chatter-01.* 1
+  tm-smtp /usr/local/share/peep/sounds/wetlands/events/light-chirps-01.* 1
+  tm-dns       /usr/local/share/peep/sounds/wetlands/events/squeak-02.* 1
+  tm-http      /usr/local/share/peep/sounds/wetlands/events/jay-01.* 1
+  tm-pop /usr/local/share/peep/sounds/wetlands/events/light-chirps-04.* 1
+  tm-https     /usr/local/share/peep/sounds/wetlands/events/robin-01.* 1
+
+=head1 EXAMPLES
+
+  traffic-monitor --help
+
+  traffic-monitor --filter="dst port 80" 
+
+  traffic-monitor --nodaemon --noautodiscovery --server=localhost  \
+            --port=2000 --filter="dst port 53"
+
+  traffic-monitor --config=/usr/local/etc/peep.conf --debug=9 \ 
+            --filter="dst port 21 or 22"
+
+  traffic-monitor --output=/var/log/peep/traffic-monitor.log --debug=7 \
+            --filter="dst port 80"
+
+
+=head1 AUTHOR
+
+Pedram Amini <pedram@redhive.com>
+
+http://pedram.redhive.com
+
+=head1 SEE ALSO
+
+perl(1), peepd(1), Net::Peep::Client, peepd.
+
+http://peep.sourceforge.net
+

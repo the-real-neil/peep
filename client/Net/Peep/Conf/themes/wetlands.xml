@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<theme>
+  <name>The wetlands general purpose sound theme</name>
+  <description>
+    Theme for monitoring general purpose syslog events and machine load.
+    Uses sounds taken from bogs, lakes, and marsh-like areas.
+  </description>
+  <event>
+    <name>out-sendmail</name>
+    <sound> </sound>
+  </event>
+  <event>
+    <name>inc-sendmail</name>
+    <sound> </sound>
+  </event>
+  <state>
+    <name>load</name>
+    <sound> </sound>
+  </state>
+</theme>

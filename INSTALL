@@ -1,0 +1,192 @@
+To install PEEP: the network auralizer
+=======================================
+
+This file describes how to compile and install PEEP.
+
+Prerequisites:
+=================
+  - A sound package:
+      If you're reading this, you probably have the Peep source
+      but you may not have the sound repository package. You'll
+      need to obtain the repository that matches your version
+      of the source from the project site:
+          http://www.sourceforge.net/projects/peep
+
+  - UNIX: The following systems are currently supported:
+           - Linux   (tested on redhat and slackware but
+                      should work on others)
+           - Solaris (including options for speaker/jack in
+                      the back of the workstation)
+           - *BSD
+
+    If you would like to add your variation of Unix or code to
+    support it, email any patches or your system requirements
+    to mgilfix@eecs.tufts.edu.
+
+  - A sound card:
+      Peep requires that you have support for your sound card
+      compiled into your kernel. That support may be either
+      OSS, ALSA (0.9.x), or /dev/audio support.
+
+  - If you want to use the ALSA sound drivers, you must have the
+    alsa sound library (asound) installed. If configure can't
+    find the asound library, it will default to /dev/audio support.
+
+    Note that if you do have the ALSA drivers installed, Peep will
+    use those in preference over the OSS drivers.
+
+  - The following libraries are required:
+       "-lm":        The standard math library
+       "-lpthread":  The POSIX thread library
+       "-lexpat":    The expat library
+
+    When configuring the makefile for your system, peep will check
+    if you have the -lsocket and -lnsl libraries and include them
+    if you do. Some systems require this for networking programs.
+
+  - While most systems come with the expat XML parsing library,
+    yours may not. To retrieve the expat parsing library, visit:
+    http://expat.sourceforge.net
+
+  - If you would like to compile with SSL support, you must have
+    OpenSSL installed on your system. To get OpenSSL, visit:
+    http://www.openssl.org.
+
+1. Generating the Makefile:
+===========================
+
+Before you compile Peep, you must generate a Makefile.  This
+makefile is configured to suit the features available on your
+machine.
+
+This configuration is done using the GNU "configure" script.
+
+To use "configure", "cd" into the top directory containing the PEEP
+files, and type:
+
+ % ./configure
+
+This script will then attempt to determine the relevant features (and
+misfeatures!!) of your system.  It should print a page or two of
+diagnostics about your machine, then stop gracefully.
+
+If you'd like help on the various options supported by the
+configure script, try the --help option, like this:
+
+ % ./configure --help
+
+If you want to change the compiler options, set the CFLAGS environment
+variable in your shell before running "configure".  For example:
+
+ % CFLAGS="-O -g -pipe" ./configure   [for people using Bourne shell or bash]
+
+or
+
+ % setenv CFLAGS "-O -g -pipe"
+ % ./configure                        [for people using C shell or tcsh]
+
+If you're tracking down a "core dump", we suggest that you use
+a value of "-g" for CFLAGS.
+
+Note, the CFLAGS variable shouldn't be used to specify include and
+library directories.  Instead, use the proper configure command-line
+options for that.
+
+If for some reason using "configure" gives you trouble, follow these steps:
+
+  - Read the prerequisites section carefully, to determine if your
+    system meets all the requirements.
+
+  - Ensure that you have the libraries necessary to compile on your system.
+    PEEP uses the math library, the POSIX thread library, and the expat XML
+    processing library. Other libraries needed may be socket and nsl, and
+    asound if you're using ALSA.
+
+  - Let me know so it can be fixed for the next release:
+    Send as much info as possible to mgilfix@eecs.tufts.edu
+
+Currently supported non-standard configure options are:
+
+  --enable-tcp-server (default)
+  --enable-udp-server
+  --enable-openssl
+
+    Enables the type of communication protocol you want to run Peep over.
+    The clients will need to be configured to use the appropriate protocol.
+    Depending on your needs, you can choose the communication protocol
+    that's right for you. See the Peep documentation for more details.
+
+  --enable-debug=[level]
+
+       0 - Lowest: Prints default output and general debugging info.
+       1 - Lower:  Lowest debugging and server info.
+       2 - Medium: Lower debugging and sound engine and playback info.
+       3 - Higher: Medium debugging and mixer, auto-discovery, and code
+                   hook info.
+       4 - Highest: Higher debugging and queuing info.
+       5 - Highest debugging level with Assertions (Whoa! This WILL slow down
+           execution)
+
+  --with-dynamic-volume  (Default) Changes volumes of sounds dynamically.
+
+  --with-static-volume   Volumes are preset and much lower.
+
+  --with-oss-driver      Compile with support for /dev/audio. This is the
+                         default and you'll probably never have to use this
+                         option.
+
+  --with-alsa-driver     Compile using ALSA libraries v 0.9.x.
+
+  --with-expat=PATH      Path to the top-level expat directory containing the
+                         libraries and headers.
+
+  --with-openssl-includes=PATH
+  --with-openssl-libraries=PATH
+
+      Path to the openssl headers and libs if they aren't in a standard
+      location.
+
+2. Compiling PEEP
+====================
+
+  If you've gotten this far and assuming that all has gone well,
+simply type "make" (or if you like, "gmake"). This should compile
+the daemon: peepd.
+
+  If you encounter any BUGS, again, please send bug reports to
+mgilfix@eecs.tufts.edu.
+
+3. Installing PEEP
+====================
+
+  You will need to obtain a 0.5.x sound package from the Peep distribution
+site before completing your install. This sound package should be unpacked
+into the src directory (It will unpack into sounds/*). These sounds
+are in no way related to compilation and are only necessary for the
+installation/functionality of the Peep server.
+
+  If peepd compiled successfully, just type "make install". This will
+install your program in the default directory. You may want to use
+the "--prefix=DIR configure option to place files where you want. If you 
+wish to see what make is going to do before it installs, type "make -n".
+A "make install" installs the following things:
+
+  * Sound files from [SRC]/sounds into [PREFIX]/share/peep/sounds
+  * The peepd executable from [SRC]/server/peepd into
+    [PREFIX]/bin/peepd
+  * The peep.conf file from [SRC]/server/peep.conf into
+    [PREFIX]/etc/peep.conf
+
+A "make uninstall" will remove all of the above files from their installed
+location.
+
+  Also, if something went wrong with the configuration process or you
+wish to start over from scratch at any point, type "make distclean".
+Then restart the installation process.
+
+  PEEP also requires the client portions of the package to be installed.
+These clients can be installed via CPAN using a `perl -MCPAN -e'install
+Net::Peep'` or manually building them. Check out the client/Net/Peep
+subdirectory of the distribution for more details.
+
+**END**

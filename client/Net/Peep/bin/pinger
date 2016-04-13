@@ -1,0 +1,272 @@
+#!/usr/bin/perl
+
+require 5.00503;
+use strict;
+# use warnings; # commented out for 5.005 compatibility
+use Carp;
+use Data::Dumper;
+use Sys::Hostname;
+use Net::Ping::External qw(ping);
+use Net::Peep::Client;
+use Net::Peep::BC;
+use Net::Peep::Host::Pool;
+use Net::Peep::Notifier;
+use Net::Peep::Notification;
+use Net::Peep::Data::Notice;
+
+use vars qw{ $LOGGER $PECKER @HOSTS  };
+
+$LOGGER = new Net::Peep::Log;
+
+use constant DEFAULT_PID_FILE => "/var/run/pinger.pid";
+use constant DEFAULT_INTERVAL => 5; # ping every 60 seconds
+
+my $hosts = '';
+
+my $events = '';
+my $logfile = '';
+my $interval = '';
+my $pidfile = DEFAULT_PID_FILE;
+my @groups = ();
+my @exclude = ();
+
+my %options = ( 
+		'hosts=s' => \$hosts, 
+		'events=s' => \$events, 
+		'logfile=s' => \$logfile, 
+		'pidfile=s' => \$pidfile,
+		'interval=s' => \$interval, 
+		'groups=s' => \@groups,
+		'exclude=s' => \@exclude );
+
+my $client = new Net::Peep::Client;
+$client->name('pinger');
+
+$client->initialize(%options) || $client->pods();
+
+$LOGGER->debug(9,"Registering parser ...");
+$client->parser(sub { my @text = @_; &parse($client,@text); });
+$LOGGER->debug(9,"\tParser registered ...");
+
+$LOGGER->debug(9,"Parsing configuration ...");
+my $conf = $client->configure();
+$LOGGER->debug(9,"\tConfiguration parsed ...");
+
+$PECKER = new Net::Peep::BC ( $conf );
+
+unless ($conf->getOption('autodiscovery')) {
+	$client->pods("Error:  Without autodiscovery you must provide a server and port option.")
+	    unless $conf->optionExists('server') && $conf->optionExists('port') &&
+		$conf->getOption('server') && $conf->getOption('port');
+}
+
+my @gotgroups = $client->getGroups();
+my @gotexclude = $client->getExcluded();
+
+$LOGGER->debug(1,"Recognized event groups are [@gotgroups]");
+$LOGGER->debug(1,"Excluded event groups are [@gotexclude]");
+
+# Check whether the pidfile option was set. If not, use the default
+unless ($conf->optionExists('pidfile')) {
+	$LOGGER->debug(3,"No pid file specified. Using default [" . DEFAULT_PID_FILE . "]");
+	$conf->setOption('pidfile', DEFAULT_PID_FILE);
+}
+
+# Check whether the interval option was set. If not, use the default
+unless ($interval || ( $conf->optionExists('interval') && $conf->getOption('interval') )) {
+	$LOGGER->debug(3,"No interval specified. Using default [" . DEFAULT_INTERVAL . "]");
+	$interval = DEFAULT_INTERVAL;
+}
+
+$client->logger()->debug(9,"Registering callback ...");
+$client->callback(sub { &loop($client,$conf); });
+$client->logger()->debug(9,"\tCallback registered ...");
+
+$SIG{'INT'} = $SIG{'TERM'} = sub { $client->shutdown(); exit 0; };
+
+$client->MainLoop($interval);
+
+sub loop {
+
+	my $client = shift || confess "Net::Peep::Client object not found.";
+	my $conf = shift || confess "Net::Peep::Conf object not found.";
+
+	my @hosts = grep $client->filter($_), @HOSTS;
+
+	my $notifier = new Net::Peep::Notifier;
+
+	for my $host (@hosts) {
+
+		my $object = $host->{'host'};
+		my $name = $object->name();
+		my $ip = $object->ip();
+		$LOGGER->debug(7,"Pinging host [$name] with IP [$ip] ...");
+		my $alive = ping( host => $ip );
+		if ($alive) {
+			$LOGGER->debug(7,"\tHost [$name] is alive.");
+		} else {
+			my $message = "${Net::Peep::Notifier::HOSTNAME}:  Host [$name] with IP address [$ip] is unresponsive!";
+			$LOGGER->debug(7,"\t$message");
+			my $eventname = $host->{'event'};
+			my $location = $host->{'location'};
+			my $priority = $host->{'priority'};
+			my $status = $host->{'notification'};
+# send an event to the Peep server
+			my $notice = new Net::Peep::Data::Notice;
+			$notice->host(hostname());
+			$notice->client('pinger');
+			$notice->type(0);
+			$notice->sound($eventname);
+			$notice->location($location);
+			$notice->volume(255);
+			$notice->priority($priority);
+			$notice->date(time);
+			$notice->data($message);
+			$notice->metric(0);
+			$notice->level($status);
+			$PECKER->send($notice);
+
+			my $notification = new Net::Peep::Notification;
+
+			$notification->client('pinger');
+			$notification->hostname($Net::Peep::Notifier::HOSTNAME);
+			$notification->status($status);
+			$notification->datetime(time());
+			$notification->message($message);
+
+			$notifier->notify($notification);
+
+		}
+
+	}
+
+} # end sub loop
+
+sub parse {
+
+	my $client = shift || confess "Net::Peep::Client object not found.";
+
+	my @text = @_;
+
+	$LOGGER->debug(1,"\t\tParsing events for client ['pinger'] ...");
+
+	while (my $line = shift @text) {
+		next if $line =~ /^\s*#/ || $line =~ /^\s*$/;
+
+		my $name;
+		if ($line =~ /^\s*([\w\-\.]+)\s+([\w\-]+)\s+([\w\-]+)\s+(\d+)\s+(\d+)\s+(info|warn|crit)\s+([\w\-\.]+)/) {
+
+			my ($name,$event,$group,$location,$priority,$notification,$hosts) = 
+				($1,$2,$3,$4,$5,$6,$7);
+			my $host = {};
+			$host->{'identifier'} = $name;
+			$host->{'event'} = $event;
+			$host->{'group'} = $group;
+			$host->{'location'} = $location;
+			$host->{'priority'} = $priority;
+			$host->{'notification'} = $notification;
+			$host->{'hosts'} = $hosts;
+
+			my $object = new Net::Peep::Host;
+			if ($object->isIP($host->{'identifier'})) {
+				$object->ip($host->{'identifier'});
+			} else {
+				$object->name($host->{'identifier'});
+			}
+			$host->{'host'} = $object;
+
+			my $pool = new Net::Peep::Host::Pool;
+			$pool->addHosts($host->{'hosts'});
+
+			$host->{'pool'} = $pool;
+
+			push @HOSTS, $host;
+
+			$LOGGER->debug(1,"\t\t\tClient host [$name] added.");
+
+		}
+
+	}
+
+} # end sub parse
+
+
+__END__
+
+=head1 NAME
+
+Pinger - Client application for Peep: The Network Auralizer.
+
+=head1 SYNOPSIS
+
+Pinger is a client for Peep which pings hosts and, if a host is
+unresponsive, initiates a broadcast to the Peep server, peepd, which
+then translates the event into an aural signal such as a chirping bird
+or laughing monkey.
+
+It is eventually intended to eventually check not only pingability,
+but services such as telnet, ssh, ftp, etc.
+
+This application is a part of Peep and requires that the Peep Perl
+modules have been installed.
+
+=head1 OPTIONS
+
+pinger supports the following command-line options:
+
+    --interval=[SECONDS]  The number of seconds to wait between each attempted 
+                          ping of each host.
+
+    --hosts=[STRING]      A comma-delimited list of hosts which will be
+                          monitored.  Hosts can also be specified in
+                          the Peep configuration file, Any hosts
+                          specified by the hosts option will override
+                          any specified in the Peep configuration
+                          file.
+
+In addition, the following options are common to all Peep clients:
+
+    --theme=[THEME]       Use the theme THEME.  A class must also be
+                          specified.
+    --class=[CLASS]       Use the class CLASS
+    --config=[PATH]       Path to the configuration file to use
+    --debug=[NUMBER]      Enable debugging. (Def:  0)
+    --nodaemon            Do not run in daemon mode
+    --pidfile=[PATH]      The file to write the pid out to (Def: /var/run/pinger.pid)
+    --output=[PATH]       The file to log pinger output to (Def: stderr)
+    --noautodiscovery     Disables autodiscovery and enables the server and port options
+    --server=[HOST]       The host (or IP address) to connect to
+    --port=[PORT NO]      The port to use
+    --protocol=[tcp|udp]  The protocol that will be used for client-server communication. 
+                          (Def: tcp)
+    --silent              Does not produce output.  To eliminate all output,
+                          either the debug option should be set to 0 or
+                          an output file should be specified.
+    --help                Prints a simple help message
+
+=head1 EXAMPLES
+
+  pinger 
+
+  pinger --help
+
+  pinger --nodaemon --noautodiscovery --server=localhost --port=2000
+
+  pinger --config=/usr/local/etc/peep.conf --debug=9
+
+  pinger --theme=pinger.xml --class=home
+
+  pinger --logfile=/var/log/messages --debug=9
+
+  pinger --output=/var/log/peepd/pinger.log --debug=7 
+
+=head1 AUTHOR
+
+Collin Starkweather <collin.starkweather@colorado.edu> Copyright (C) 2000
+
+=head1 SEE ALSO
+
+perl(1), peepd(1), Net::Peep::Client, peepd.
+
+http://peep.sourceforge.net
+

@@ -1,0 +1,28 @@
+#
+# Client configuration for Peep: The Network Auralizer client:
+#   logparser
+
+client logparser
+  class main
+  port 1999
+  default
+    groups  default,firewall
+    logfile /var/log/messages
+  end default
+  config
+    events
+      # Name      Group     Location     Priority   Notification   Pattern                                             Hosts
+      http        www       255          0          info          "(GET|POST).*HTTP"                                   localhost
+      code-red    www       128          0          warn          "default\.ida\?XXXX"                                 localhost
+      bad-query   www       128         255         crit          "ORA-\d{5}"                                          localhost
+      su-login    default   128         255         warn          "pam_unix\[\d+\]: \(system-auth\) .* opened .* root" localhost
+      su-logout   default   128         255         warn          "pam_unix\[\d+\]: \(system-auth\) .* closed .* root" localhost
+      # note that if one of the previous 2 regexes match, the following 2 will be ignored
+      login       default   128         255         info          "pam_unix\[\d+\]: \(system-auth\) .* opened"         localhost
+      logout      default   128          0          info          "pam_unix\[\d+\]: \(system-auth\) .* closed"         localhost
+      ssh-logins  default   128          2          info          "sshd.*Accepted password"                            localhost
+      bad-login   default   128         255         warn          "pam_unix.*: authentication failure"                 localhost
+      ip-deny     firewall  128         255         crit          "DENY"                                               localhost
+    end events
+  end config
+end client logparser

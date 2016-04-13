@@ -1,0 +1,11 @@
+Server Documentation:
+    Located in server/:
+        peep-server.tex        - Original Documentation latex source
+        peep-internals.gif     - Diagram for documentation
+        peep-server/index.html - HTML version of documentation
+
+Client Documentation:
+    Located in client/
+        make-client-documentation - Generates client documentation
+                                    from perl POD within client
+                                    source.

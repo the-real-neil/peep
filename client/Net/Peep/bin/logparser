@@ -1,0 +1,483 @@
+#!/usr/bin/perl
+
+# See POD documentation below for more information
+
+require 5.00503;
+use strict;
+use Carp;
+use Data::Dumper;
+use Sys::Hostname;
+use File::Tail;
+use Net::Peep::BC;
+use Net::Peep::Data::Notice;
+use Net::Peep::Client;
+use Net::Peep::Log;
+use Net::Peep::Notifier;
+use Net::Peep::Notification;
+use Net::Peep::Host::Pool;
+
+use vars qw{ $LOGGER $PECKER @EVENTS @TAILS };
+
+# The interval that File::Tail waits before checking the log
+use constant INTERVAL => 0.1;
+# The maximum interval that File::Tail will wait before checking the
+# log
+use constant MAX_INTERVAL => 1;
+# The time after which File::Tail adjusts its predictions
+use constant ADJUST_AFTER => 2;
+# The default pidfile used by logparser
+use constant DEFAULT_PID_FILE => "/var/run/logparser.pid";
+
+$LOGGER = new Net::Peep::Log;
+
+my $client = new Net::Peep::Client;
+
+$client->name('logparser');
+
+my $events = '';
+my $logfile = '';
+my $pidfile = DEFAULT_PID_FILE;
+my @groups = ();
+my @exclude = ();
+
+my %options = ( 
+		'events=s' => \$events, 
+		'logfile=s' => \$logfile, 
+		'pidfile=s' => \$pidfile,
+		'groups=s' => \@groups,
+		'exclude=s' => \@exclude 
+		);
+
+my $return = $client->initialize(%options) || $client->pods();
+
+$LOGGER->debug(9,"Registering parser ...");
+$client->parser(sub { my @text = @_; &parse($client,@text); });
+$LOGGER->debug(9,"\tParser registered ...");
+
+$LOGGER->debug(9,"Parsing configuration ...");
+my $conf = $client->configure();
+$LOGGER->debug(9,"\tConfiguration parsed ...");
+$conf->setCommandLineOption('groups',\@groups) if @groups;
+$conf->setCommandLineOption('exclude',\@exclude) if @exclude;
+
+$PECKER = Net::Peep::BC->new($conf);
+
+unless ($conf->getOption('autodiscovery')) {
+	$client->pods("Error:  Without autodiscovery you must provide a server and port option.")
+	    unless $conf->optionExists('server') && $conf->optionExists('port') &&
+		$conf->getOption('server') && $conf->getOption('port');
+}
+
+my @gotgroups = $client->getGroups();
+my @gotexclude = $client->getExcluded();
+
+$LOGGER->debug(1,"Recognized event groups are [@gotgroups]");
+$LOGGER->debug(1,"Excluded event groups are [@gotexclude]");
+
+# Check whether the pidfile option was set. If not, use the default
+unless ($conf->optionExists('pidfile')) {
+	$LOGGER->debug(3,"No pid file specified. Using default [" . DEFAULT_PID_FILE . "]");
+	$conf->setOption('pidfile', DEFAULT_PID_FILE);
+}
+
+$LOGGER->log("Scanning logs:");
+
+for my $logfile (&getLogFiles($conf)) {
+	$LOGGER->log("\t$logfile");
+}
+
+# Register a callback for the main loop
+$LOGGER->debug(9,"Registering callback ...");
+$client->callback(sub { &loop($client,$conf); });
+$LOGGER->debug(9,"\tCallback registered ...");
+
+# Some signal handling to promote clean exits
+$SIG{'INT'} = $SIG{'TERM'} = sub { $client->shutdown(); exit 0; };
+
+$LOGGER->debug(9,"Executing main loop ...");
+$client->MainLoop();
+
+sub loop {
+
+	my $client = shift || "Error:  Net::Peep::Client object not found";
+	my $conf = shift || "Error:  Net::Peep::Conf object not found";
+
+	select(STDOUT);
+
+	$| = 1; # autoflush
+
+	my $nfound;
+
+	my @logFileTails = &getLogFileTails($conf);
+
+	while (1) {
+
+		$nfound = File::Tail::select(undef,undef,undef,60,@logFileTails);
+		# hmmm ... don't quite understand what interval does ... [collin]
+		unless ($nfound) {
+			for my $filetail (@logFileTails) {
+				$filetail->interval;
+			}
+		}
+
+		for my $filetail (@logFileTails) {
+			if (not $filetail->predict) { 
+				my ($line,@lines); 
+				while ($line = $filetail->read) {
+					push @lines,$line;
+					last if $filetail->predict;
+				}
+				&tail($client,$conf,@lines); 
+			} 
+		}
+	}
+
+	return 1;
+
+} # end sub loop
+
+sub parse {
+
+	my $client = shift || confess "Error:  Net::Peep::Client object not found";
+	my @text = @_;
+	
+	$LOGGER->debug(1,"\t\tParsing events for client [logparser] [".scalar(@text)."] lines ...");
+	
+	my @events = &getConfigSection('events',@text);
+	
+	if ($client->conf()->versionOK()) {
+		
+		while (my $line = shift @events) {
+			next if $line =~ /^\s*#/ || $line =~ /^\s*$/;
+			
+			my $name;
+			if ($line =~ /^\s*([\w-]+)\s+([\w-]+)\s+(\d+)\s+(\d+)\s+(\w+)\s+"(.*)"\s+([\w\-\.]+)/) {
+				
+				my $event = {};
+				$event->{'name'} = $1;
+				$event->{'group'} = $2;
+				$event->{'location'} = $3;
+				$event->{'priority'} = $4;
+				$event->{'notification'} = $5;
+				$event->{'regex'} = $6;
+				$event->{'hosts'} = $7;
+				
+				my $pool = new Net::Peep::Host::Pool;
+				$pool->addHosts($event->{'hosts'});
+				
+				$event->{'pool'} = $pool;
+				
+				push @EVENTS, $event;
+				$LOGGER->debug(1,"\t\t\tClient event [$1] added.");
+				
+			} else { print STDERR "!:  The line [$line] didn't match\n" }
+			
+		}
+		
+	} else {
+
+		confess "You appear to be using a configuration file ".
+		    "version (".$client->conf()->getVersion().") ".
+			"that is no longer supported.";
+
+	}
+	
+	return @text;
+
+} # end sub parse
+
+# Everything below here is logparser-specific; that is, subroutines
+# that would not be found in other clients.  They primarily deal with
+# interpreting the logparser configuration and the tailing of logs in
+# accordance with the logparser configuration
+
+sub tail {
+
+	my $client = shift || confess "Error:  Net::Peep::Client object not found";
+	my $conf = shift || confess "Error:  Net::Peep::Conf object not found";
+	my @food = @_;
+
+	chomp for @food;
+
+	for my $line (@food) {
+
+		my $found = 0;
+
+# filter the events based on which groups or option letters
+# are specified
+		my @events = grep $client->filter($_), @EVENTS;
+
+		for my $event (@events) {
+
+# if we've already matched an event ignore the remaining events
+
+			unless ($found) {
+
+				my $name = $event->{'name'};
+				my $location = $event->{'location'};
+				my $priority = $event->{'priority'};
+				my $status = $event->{'notification'};
+				my $regex = $event->{'regex'};
+
+				$LOGGER->debug(9,"\tTrying to match regex [$regex] for event [$name]");
+
+				if ($line =~ /$regex/) {
+
+					$LOGGER->debug(5,"$name:  $line");
+
+					my $notice = new Net::Peep::Data::Notice;
+					$notice->host(hostname());
+					$notice->client('logparser');
+					$notice->type(0);
+					$notice->sound($name);
+					$notice->location($location);
+					$notice->priority($priority);
+					$notice->volume(255);
+					$notice->date(time());
+					$notice->data($line);
+					$notice->metric(0);
+					$notice->level($status);
+					$PECKER->send($notice);
+
+					my $notifier = new Net::Peep::Notifier;
+					my $notification = new Net::Peep::Notification;
+
+					$notification->client($client->name());
+					$notification->hostname($Net::Peep::Notifier::HOSTNAME);
+					$notification->status($status);
+					$notification->datetime(time());
+					$notification->message("${Net::Peep::Notifier::HOSTNAME}:  $name:  $line");
+
+					$notifier->notify($notification);
+
+					$found++;
+
+				}
+			}
+		}
+
+	}
+
+	return 1;
+
+} # end sub tail
+
+sub getLogFiles {
+
+	my $conf = shift || confess "Error:  Net::Peep::Conf object not found";
+	my $logfiles = $conf->optionExists('logparser','logfile') ? $conf->getOption('logparser','logfile') : '';
+	my @logfiles = split ',\s*', $logfiles;
+	return wantarray ? @logfiles : [@logfiles];
+
+} # sub getLogFiles
+
+sub getLogFileTails {
+
+	my $conf = shift || confess "Error:  Net::Peep::Conf object not found";
+
+	if ( not @TAILS ) {
+
+		my @logfiles = &getLogFiles($conf);
+		$LOGGER->debug(3,"Getting log file tails for [@logfiles] ...");
+		my @tailfiles;
+		for my $logfile (@logfiles) {
+			if (-e $logfile) {
+				my $tail;
+				eval { $tail =
+					 File::Tail->new(
+							 name => $logfile,
+							 interval => INTERVAL,
+							 maxinterval => MAX_INTERVAL,
+							 adjustafter => ADJUST_AFTER
+							 );
+			       };
+				if ($@) {
+					chomp $@;
+					$LOGGER->log("Warning:  Error creating tail of logfile '$logfile':  $@");
+				} else {
+					push @TAILS, $tail;
+				}
+			} else {
+				$LOGGER->log("Warning:  Can't tail the log file '$logfile':  It doesn't exist.");
+			}
+		}
+		
+		$LOGGER->debug(3,"\tGot [".scalar(@TAILS)."] tails.");
+	}
+
+	return wantarray ? @TAILS : \@TAILS;
+
+} # sub getLogFileTails
+
+sub getConfigSection {
+
+    my $section = shift;
+    my @text = @_;
+
+    my @return;
+    my $read = 0;
+    for my $line (@text) {
+	if ($line =~ /^\s*$section/) {
+	    $read = 1;
+	} elsif ($line =~ /^\s*end events/) {
+	    $read = 0;
+	} elsif ($read) {
+	    next if $line =~ /^\s*#/ || $line =~ /^\s*$/;
+	    push @return, $line;
+	} else {
+	    # do nothing
+	}
+    }
+    return wantarray ? @return : \@return;
+
+} # end sub getConfigSection
+
+__END__
+
+=head1 NAME
+
+Logparser - Client application for Peep: The Network Auralizer.
+
+=head1 SYNOPSIS
+
+Logparser is a client for Peep which monitors log files such as
+
+  /var/log/messages
+  /var/log/maillog
+  /var/log/httpd/access_log
+
+etc. and initiates Peep events based on matching regular
+expressions.
+
+Events are broadcast to the Peep server, peepd, which then translates
+the event into an aural signal such as a chirping bird or laughing
+monkey.
+
+This application is a part of Peep and requires that the Peep Perl
+modules have been installed.
+
+=head1 OPTIONS
+
+logparser supports the following command-line options:
+
+    --events=[STRING]     The string of events to scan for. For more information,
+                          consult the Peep configuration file documentation
+    --logfile=[PATH]      The path of the logfiles to scan, delimited by ','
+
+In addition, the following options are common to all Peep clients:
+
+    --theme=[THEME]       Use the theme THEME.  A class must also be
+                          specified.
+    --class=[CLASS]       Use the class CLASS
+    --config=[PATH]       Path to the configuration file to use
+    --debug=[NUMBER]      Enable debugging. (Def:  0)
+    --nodaemon            Do not run in daemon mode
+    --pidfile=[PATH]      The file to write the pid out to (Def: /var/run/logparser.pid)
+    --output=[PATH]       The file to log logparser output to (Def: stderr)
+    --noautodiscovery     Disables autodiscovery and enables the server and port options
+    --server=[HOST]       The host (or IP address) to connect to
+    --port=[PORT NO]      The port to use
+    --protocol=[tcp|udp]  The protocol that will be used for client-server communication. 
+                          (Def: tcp)
+    --silent              Does not produce output.  To eliminate all output,
+                          either the debug option should be set to 0 or
+                          an output file should be specified.
+    --help                Prints a simple help message
+
+=head1 EXAMPLES
+
+  logparser 
+
+  logparser --help
+
+  logparser --nodaemon --noautodiscovery --server=localhost --port=2000
+
+  logparser --config=/usr/local/etc/peep.conf --debug=9
+
+  logparser --theme=appserver.xml --class=home
+
+  logparser --logfile=/var/log/messages --debug=9
+
+  logparser --output=/var/log/peepd/logparser.log --debug=7 
+
+=head1 CONFIGURATION
+
+Perhaps the best way to describe the configuration is by example:
+
+      # All patterns matched are done using Perl/awk matching syntax
+      # Commented lines are ones that BEGIN with a '#'
+      #
+      # Name      Group    Location     Priority   Notification   Pattern                                              Hosts
+      #
+      green-river default   128         255         warn          "greenriver"                                         www
+      code-red    default   128         255         warn          "default\.ida"                                       localhost
+      http        www       255          0          info          "(GET|POST).*HTTP"                                   www
+      su-login    default   128         255         warn          "PAM_unix\[\d+\]: \(system-auth\) .* opened .* root" localhost
+      su-logout   default   128         255         warn          "PAM_unix\[\d+\]: \(system-auth\) .* closed .* root" localhost
+      # note that if one of the previous 2 regexes match, the following 2 will be ignored
+      login       default   128         255         info          "PAM_unix\[\d+\]: \(system-auth\) .* opened"         localhost
+      logout      default   128          0          info          "PAM_unix\[\d+\]: \(system-auth\) .* closed"         localhost
+      ssh-logins  default   128          2          info          "sshd.*Accepted password"                            localhost
+      #bad-query   www       128          3          warn          "ORA-\d{5}"                                          localhost
+      bad-login   default   128         255         warn          "pam_unix.*\[\d+\]: authentication failure"            localhost
+      ip-deny     firewall  128         255         warn          "DENY"                                               www
+
+Please note that the C<logparser> configuration format changed between
+version 0.4.2 and 0.4.3.  The current version of C<logparser> no
+longer supports configuration formats prior to 0.4.3.
+
+The C<Name> column assigns a name to the event.  This is used by the client to
+identify an event to the server and triggers the event specified in the
+corresponding event blocks in peep.conf.
+
+The C<Group> column allows you to put events into groups.  For example, the
+C<www> group may correspond to a group you use only on your web server and
+C<firewall> to a group you use only on your firewall.  Then you would call
+C<logparser> with a command like 
+
+  logparser --groups=www ...
+
+on the web server and 
+
+  logparser --groups=firewall ...
+
+on your firewall box.  If you want to use all groups except the firewall group,
+you can call C<logparser> with something like
+
+  logparser --exclude=firewall ...
+
+If no group is specifically included or excluded, then it is assumed all groups
+are active.
+
+The C<Location> column indicates which speaker the sound will come through with
+0 the left speaker, 255 the right speaker, and any number in between a mix of
+left and right.  128 is a good number for balance.
+
+The C<Priority> column indicates the prioritization the server gives to the
+event with 0 highest and 255 lowest priority.
+
+The C<Notification> column indicates the level of any associated notification
+with levels C<info>, C<warn>, or C<crit>.
+
+The C<Pattern> column provides the regular expression, enclosed in quotes, that
+will be matched for the event. 
+
+Finally, the C<Host> column indicates which host the event will be active on.
+This can provide an alternative grouping method to the C<Group> column.  It can
+either be an IP address or hostname.  If C<localhost> or C<127.0.0.1>, the
+event is active for all hosts.
+
+=head1 AUTHOR
+
+Michael Gilfix <mgilfix@eecs.tufts.edu> Copyright (C) 2000
+
+Collin Starkweather <collin.starkweather@collinstarkweather.com>
+
+=head1 SEE ALSO
+
+perl(1), peepd(1), Net::Peep::Client, peepd.
+
+http://peep.sourceforge.net
+
+http://www.auralizer.com
+

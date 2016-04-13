@@ -1,0 +1,177 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+
+<theme name="collin">
+  <sounds>
+    <sound>
+      <name>whistle-01</name>
+      <category>wetlands</category>
+      <type>coupled</type>
+      <format>raw</format>
+      <description></description>
+      <path>wetlands/coupled/whistle-01</path>
+    </sound>
+    <sound>
+      <name>light-chirps-04</name>
+      <category>wetlands</category>
+      <type>events</type>
+      <format>raw</format>
+      <description></description>
+      <path>wetlands/events/light-chirps</path>
+    </sound>
+    <sound>
+      <name>thrush-01</name>
+      <category>wetlands</category>
+      <type>events</type>
+      <format>raw</format>
+      <description></description>
+      <path>wetlands/events/thrush</path>
+    </sound>
+    <sound>
+      <name>doorbell</name>
+      <category>misc</category>
+      <type>events</type>
+      <format>raw</format>
+      <description>A "ding dong" doorbell sound</description>
+      <path>misc/events/doorbell</path>
+    </sound>
+    <sound>
+      <name>rooster</name>
+      <category>misc</category>
+      <type>events</type>
+      <format>raw</format>
+      <description>A rooster crow</description>
+      <path>misc/events/rooster</path>
+    </sound>
+    <sound>
+      <name>water-01</name>
+      <category>wetlands</category>
+      <type>states</type>
+      <format>raw</format>
+      <description>The sound of trickling water</description>
+      <path>wetlands/states/water-01</path>
+    </sound>
+    <sound>
+      <name>water-02</name>
+      <category>wetlands</category>
+      <type>states</type>
+      <format>raw</format>
+      <description>The sound of rushing water</description>
+      <path>wetlands/states/water-02</path>
+    </sound>
+  </sounds>
+  <events>
+    <event>
+      <name>http</name>
+      <sound>whistle-01</sound>
+      <description>Anybody who accesses a web page will trigger this event</description>
+    </event>
+    <event>
+      <name>code-red</name>
+      <sound>thrush-01</sound>
+      <description>The Code Red exploit will trigger this event</description>
+    </event>
+    <event>
+      <name>su-login</name>
+      <sound>light-chirps-04</sound>
+      <description>If someone logs in as root, this event will be triggered</description>
+    </event>
+    <event>
+      <name>su-logout</name>
+      <sound>thrush-01</sound>
+      <description>When someone logs out of a root account, this event will be triggered</description>
+    </event>
+    <event>
+      <name>login</name>
+      <sound>doorbell</sound>
+      <description>When someone logs in, this event will be triggered</description>
+    </event>
+    <event>
+      <name>logout</name>
+      <sound>rooster</sound>
+      <description>When someone logs out, this event will be triggered</description>
+    </event>
+    <event>
+      <name>ping-yahoo</name>
+      <sound>doorbell</sound>
+      <description>When www.yahoo.com can't be pinged, a doorbell will ring</description>
+    </event>
+  </events>
+  <states>
+    <state>
+      <name>loadavg</name>
+      <description>
+      The sound of running water gets progressively stronger 
+      as the 5 minute load average increases
+      </description>
+      <threshold>
+        <level>0.5</level>
+        <fade>0.5</fade>
+        <sound>water-01</sound>
+      </threshold>
+      <threshold>
+        <level>1.0</level>
+        <fade>0.25</fade>
+        <sound>water-02</sound>
+      </threshold>
+    </state>
+  </states>
+  <clients>
+    <client name="logparser">
+      <options>
+        <option>
+          <name>port</name>
+          <value>1999</value>
+        </option>
+        <option>
+          <name>logfile</name>
+          <value>/var/log/messages,/opt/apache/logs/access_log</value>
+        </option>
+        <option>
+          <name>groups</name>
+          <value>default,www</value>
+        </option>
+      </options>
+      <configuration><![CDATA[
+        # All patterns matched are done using Perl/awk matching syntax
+        #  Commented lines are ones that BEGIN with a '#'
+        #  Reference letters are used for the default section as well as
+        #  the command line options -events and -logfile.
+
+        events
+            # Name      Group     Location     Priority   Notification   Pattern                                 Hosts
+            http        www       255          0          info          "(GET|POST).*HTTP"                       localhost
+            code-red    www       128          0          warn          "default\.ida\?XXXX"                     localhost
+            bad-query   www       128         255         crit          "ORA-\d{5}"                              localhost
+            su-login    default   128         255         warn          "\(pam_unix\)\[\d+\]: .* opened .* root" localhost
+            su-logout   default   128         255         warn          "\(pam_unix\)\[\d+\]: .* closed .* root" localhost
+            # note that if one of the previous 2 regexes match, the following 2 will be ignored
+            login       default   128         255         info          "\(pam_unix\)\[\d+\]: .* opened"         localhost
+            logout      default   128          0          info          "\(pam_unix\)\[\d+\]: .* closed"         localhost
+            ip-deny     firewall  128         255         crit          "DENY"                                   localhost
+        end events
+	]]>
+        </configuration>
+        <notification level="warn">
+          <hosts>
+            <host name="localhost" ip="127.0.0.1"/>
+          </hosts>
+          <recipients>
+            <recipient email="bogus.user@bogusdomain.com"/>
+            <recipient email="bogus.admin@bogusdomain.com"/>
+          </recipients>
+        </notification>
+    </client>
+    <client name="sysmonitor">
+      <configuration>
+        # You can figure out what options these correspond to by doing a Uptime -help
+        sleep      60         # Number of seconds to sleep
+        loadsound  loadavg    # The sound to use when playing a load sound
+        userssound users      # The sound to use for number of users
+        maxload    2.5        # The initial value to consider maximum load
+        maxusers   200        # The initial value to consider a lot of users
+        loadloc    128        # Stereo location for load sounds
+        usersloc   128        # Stereo location for user sounds
+      </configuration>
+    </client>
+  </clients>
+</theme>

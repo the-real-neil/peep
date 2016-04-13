@@ -1,0 +1,6 @@
+Revision history for Perl extension Net::Peep::Data::Notice.
+
+0.01  Sun Feb 24 15:28:40 2002
+	- original version; created by h2xs 1.21 with options
+		-XA Net::Peep::Data::Notice
+

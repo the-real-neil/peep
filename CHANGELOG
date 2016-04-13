@@ -1,0 +1,64 @@
+For Peep v0.5.0-rc2:
+  * Peep now successfully compiles on
+    OpenBSD.
+  * Fixed some instability with the
+    mixer that caused peep to crash
+    on OpenBSD.
+  * peepd has undergone the valgrind
+  * Fixed a threading bug that kept
+    the tcp server from handling
+    multiple clients.
+  * Update of config.guess and config.sub
+    files to use the latest ones in Debian
+    linux.
+  * ALSA compilation now works with the
+    latest drivers.
+  * UDP has been fully implemented:
+    * Server now compiles either with
+      --enable-tcp-server or
+      --enable-udp-server
+    * Clients now accept either:
+      --protocol=tcp or
+      --protocol=udp
+    * Default is TCP for both server and
+      clients.
+  * Fixed a buttload of bugfixes.
+
+For Peep v0.5.0-rc1: (some highlights)
+  * Created and updated Documentation for
+    the 0.5.x series. Documentation format
+    is now in latex and html is generated
+    via latex2html.
+  * Updated the general package files
+    (INSTALL, README, etc.).
+  * Updated the build to include the
+    configuration directory and to generate
+    the HTML documentation from the tex
+    source during a `make dist`
+  * Added the client documentation, which
+    is now generated during the build
+    along with the server documentation.
+  * The theme format has now been fixed
+    and properly implemented.
+  * Auto-discovery now works.
+  * UDP/SSL postponed until rc2. TCP
+    support fully implemented
+
+Peep 0.5.0 is a complete rewrite of the Peep
+server and clients. New features include:
+  * Support for 3 protocols: UDP/TCP/SSL.
+  * Plug-in architecture for post-processing
+  * XML messaging
+  * New sound effect architecture - makes
+    adding new effects simple
+  * XML themes! <- Portable themes that allow
+    a Peep installation to configure out of
+    the box.
+  * Better stability. Yeah. This should be
+    a lot more stable.
+  * New repository layout. Sounds are better
+    organized and organization is now based
+    on directory structure, rather than file
+    numbers.
+  * ALSA 0.9.x support (But untested).
+  * Better debugging support

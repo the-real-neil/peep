@@ -1,0 +1,212 @@
+debug 0 : 
+
+nothing's printed when a packet is received.
+
+
+Server : debug 1
+
+
+[Mon Jul 21 10:47:03 2003] Packet header:
+[Mon Jul 21 10:47:03 2003]      version: [2]
+[Mon Jul 21 10:47:03 2003]      type:    [4]
+[Mon Jul 21 10:47:03 2003]      content: [1]
+[Mon Jul 21 10:47:03 2003]      magic:   [0xdeadbeef]
+[Mon Jul 21 10:47:03 2003]      len:     [418]
+[Mon Jul 21 10:47:03 2003] Got client event with XML content.
+[Mon Jul 21 10:47:03 2003] 
+[Mon Jul 21 10:47:03 2003] Received Event:
+[Mon Jul 21 10:47:03 2003]      type:   0
+[Mon Jul 21 10:47:03 2003]      len:    8
+[Mon Jul 21 10:47:03 2003]      sound:  outgoing
+[Mon Jul 21 10:47:03 2003]      loc:    128
+[Mon Jul 21 10:47:03 2003]      prior:  0
+[Mon Jul 21 10:47:03 2003]      vol:    255
+[Mon Jul 21 10:47:03 2003]      dither: 255
+[Mon Jul 21 10:47:03 2003]      flags:  0x0000
+
+
+
+debug 2 :
+
+[Mon Jul 21 10:45:36 2003] Packet header:
+[Mon Jul 21 10:45:36 2003]      version: [2]
+[Mon Jul 21 10:45:36 2003]      type:    [4]
+[Mon Jul 21 10:45:36 2003]      content: [1]
+[Mon Jul 21 10:45:36 2003]      magic:   [0xdeadbeef]
+[Mon Jul 21 10:45:36 2003]      len:     [493]
+[Mon Jul 21 10:45:36 2003] Got client event with XML content.
+[Mon Jul 21 10:45:36 2003] 
+[Mon Jul 21 10:45:36 2003] Received Event:
+[Mon Jul 21 10:45:36 2003]      type:   0
+[Mon Jul 21 10:45:36 2003]      len:    8
+[Mon Jul 21 10:45:36 2003]      sound:  incoming
+[Mon Jul 21 10:45:36 2003]      loc:    128
+[Mon Jul 21 10:45:36 2003]      prior:  0
+[Mon Jul 21 10:45:36 2003]      vol:    255
+[Mon Jul 21 10:45:36 2003]      dither: 255
+[Mon Jul 21 10:45:36 2003]      flags:  0x0000
+[Mon Jul 21 10:45:36 2003] 
+[Mon Jul 21 10:45:36 2003] We found a channel right away: 0
+[Mon Jul 21 10:45:36 2003] Mixing in sound on channel: 0
+[Mon Jul 21 10:45:36 2003] Assigned to startt for bestc: 1058798736.428518 on channel: 0
+[Mon Jul 21 10:45:36 2003] 
+
+
+
+debug 3 :
+
+[Mon Jul 21 10:27:24 2003] Packet header:
+[Mon Jul 21 10:27:24 2003]      version: [2]
+[Mon Jul 21 10:27:24 2003]      type:    [4]
+[Mon Jul 21 10:27:24 2003]      content: [1]
+[Mon Jul 21 10:27:24 2003]      magic:   [0xdeadbeef]
+[Mon Jul 21 10:27:24 2003]      len:     [448]
+[Mon Jul 21 10:27:24 2003] Got client event with XML content.
+[Mon Jul 21 10:27:24 2003] WARNING: Encountered unsupported XML tag: [level]
+[Mon Jul 21 10:27:24 2003] WARNING: XML text is: [info]
+[Mon Jul 21 10:27:24 2003] 
+[Mon Jul 21 10:27:24 2003] Received Event:
+[Mon Jul 21 10:27:24 2003]      type:   0
+[Mon Jul 21 10:27:24 2003]      len:    4
+[Mon Jul 21 10:27:24 2003]      sound:  sudo
+[Mon Jul 21 10:27:24 2003]      loc:    128
+[Mon Jul 21 10:27:24 2003]      prior:  0
+[Mon Jul 21 10:27:24 2003]      vol:    255
+[Mon Jul 21 10:27:24 2003]      dither: 255
+[Mon Jul 21 10:27:24 2003]      flags:  0x0000
+[Mon Jul 21 10:27:24 2003] 
+[Mon Jul 21 10:27:24 2003] We found a channel right away: 0
+[Mon Jul 21 10:27:24 2003] Mixing in sound on channel: 0
+[Mon Jul 21 10:27:24 2003] Sound added to channel [0]:
+[Mon Jul 21 10:27:24 2003]      length:      [206012]
+[Mon Jul 21 10:27:24 2003]      stereo pos:  [0.501961]
+[Mon Jul 21 10:27:24 2003]      filter flag: [0x000]
+[Mon Jul 21 10:27:24 2003] 
+[Mon Jul 21 10:27:24 2003] For channel [0], using dynamic volume multiplier of [0.500000].
+[Mon Jul 21 10:27:24 2003] Positions of currently playing sounds:
+[Mon Jul 21 10:27:24 2003]        0(     0)  1(     0)  2(     0)  3(     0)  4(     0)
+[Mon Jul 21 10:27:24 2003]        5(     0)  6(     0)  7(     0)  8(     0)  9(     0)
+[Mon Jul 21 10:27:24 2003]       10(     0) 11(     0)
+[Mon Jul 21 10:27:24 2003] Total dynamic volume for [1] channels is: 0.500000
+[Mon Jul 21 10:27:24 2003] Assigned to startt for bestc: 1058797644.491078 on channel: 0
+[Mon Jul 21 10:27:24 2003] 
+[Mon Jul 21 10:27:24 2003] 
+[Mon Jul 21 10:27:24 2003] Event notice hook executed!
+[Mon Jul 21 10:27:24 2003] XML notice was:
+[Mon Jul 21 10:27:24 2003]      Host:     [natch.8d.com]
+[Mon Jul 21 10:27:24 2003]      Client:   [logparser]
+[Mon Jul 21 10:27:24 2003]      Date:     [Mon Jul 21 10:27:24 2003]
+[Mon Jul 21 10:27:24 2003]      Data:     [Jul 21 10:27:23 natch sudo: xavier: TTY=pts/34; PWD=/home/xavier/work/projects/peep_sounds/wetlands/events/light-hoot; USER=root; COMMAND=/bin/echo 26943]
+[Mon Jul 21 10:27:24 2003]      Metric:   [0]
+[Mon Jul 21 10:27:24 2003]      Type:     [0]
+[Mon Jul 21 10:27:24 2003]      Sound:    [sudo]
+[Mon Jul 21 10:27:24 2003]      Location: [128]
+[Mon Jul 21 10:27:24 2003]      Priority: [0]
+[Mon Jul 21 10:27:24 2003]      Volume:   [255]
+[Mon Jul 21 10:27:24 2003]      Dither:   [-1]
+[Mon Jul 21 10:27:24 2003]      Flags:    [0x0000]
+
+
+debug 9 :
+
+[Mon Jul 21 10:26:01 2003] Packet header:
+[Mon Jul 21 10:26:01 2003]      version: [2]
+[Mon Jul 21 10:26:01 2003]      type:    [4]
+[Mon Jul 21 10:26:01 2003]      content: [1]
+[Mon Jul 21 10:26:01 2003]      magic:   [0xdeadbeef]
+[Mon Jul 21 10:26:01 2003]      len:     [522]
+[Mon Jul 21 10:26:01 2003] Got client event with XML content.
+[Mon Jul 21 10:26:01 2003] WARNING: Encountered unsupported XML tag: [level]
+[Mon Jul 21 10:26:01 2003] WARNING: XML text is: [info]
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] Event notice hook executed!
+[Mon Jul 21 10:26:01 2003] XML notice was:
+[Mon Jul 21 10:26:01 2003]      Host:     [natch.8d.com]
+[Mon Jul 21 10:26:01 2003]      Client:   [logparser]
+[Mon Jul 21 10:26:01 2003]      Date:     [Mon Jul 21 10:26:01 2003]
+[Mon Jul 21 10:26:01 2003]      Data:     [Jul 21 10:26:00 natch kernel: smtp: IN=eth0 OUT= MAC=00:d0:b7:c0:fe:e9:00:90:69:98:88:02:08:00 SRC=194.70.126.10 DST=209.47.172.23 LEN=40 TOS=0x00 PREC=0x00 TTL=43 ID=64233 PROTO=TCP SPT=4761 DPT=25 WINDOW=16384 RES=0x00 SYN URGP=0]
+[Mon Jul 21 10:26:01 2003]      Metric:   [0]
+[Mon Jul 21 10:26:01 2003]      Type:     [0]
+[Mon Jul 21 10:26:01 2003]      Sound:    [smtp]
+[Mon Jul 21 10:26:01 2003]      Location: [128]
+[Mon Jul 21 10:26:01 2003]      Priority: [0]
+[Mon Jul 21 10:26:01 2003]      Volume:   [255]
+[Mon Jul 21 10:26:01 2003]      Dither:   [-1]
+[Mon Jul 21 10:26:01 2003]      Flags:    [0x0000]
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] Received Event:
+[Mon Jul 21 10:26:01 2003]      type:   0
+[Mon Jul 21 10:26:01 2003]      len:    4
+[Mon Jul 21 10:26:01 2003]      sound:  smtp
+[Mon Jul 21 10:26:01 2003]      loc:    128
+[Mon Jul 21 10:26:01 2003]      prior:  0
+[Mon Jul 21 10:26:01 2003]      vol:    255
+[Mon Jul 21 10:26:01 2003]      dither: 255
+[Mon Jul 21 10:26:01 2003]      flags:  0x0000
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] We found a channel right away: 1
+[Mon Jul 21 10:26:01 2003] Mixing in sound on channel: 1
+[Mon Jul 21 10:26:01 2003] Sound added to channel [1]:
+[Mon Jul 21 10:26:01 2003]      length:      [9928]
+[Mon Jul 21 10:26:01 2003]      stereo pos:  [0.501961]
+[Mon Jul 21 10:26:01 2003]      filter flag: [0x000]
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] For channel [1], using dynamic volume multiplier of [0.500000].
+[Mon Jul 21 10:26:01 2003] Positions of currently playing sounds:
+[Mon Jul 21 10:26:01 2003]        0(     0)  1(     0)  2(     0)  3(     0)  4(     0)
+[Mon Jul 21 10:26:01 2003]        5(     0)  6(     0)  7(     0)  8(     0)  9(     0)
+[Mon Jul 21 10:26:01 2003]       10(     0) 11(     0)
+[Mon Jul 21 10:26:01 2003] Total dynamic volume for [1] channels is: 0.500000
+[Mon Jul 21 10:26:01 2003] Assigned to startt for bestc: 1058797561.660840 on channel: 1
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] Packet header:
+[Mon Jul 21 10:26:01 2003]      version: [2]
+[Mon Jul 21 10:26:01 2003]      type:    [4]
+[Mon Jul 21 10:26:01 2003]      content: [1]
+[Mon Jul 21 10:26:01 2003]      magic:   [0xdeadbeef]
+[Mon Jul 21 10:26:01 2003]      len:     [479]
+[Mon Jul 21 10:26:01 2003] Got client event with XML content.
+[Mon Jul 21 10:26:01 2003] WARNING: Encountered unsupported XML tag: [level]
+[Mon Jul 21 10:26:01 2003] WARNING: XML text is: [info]
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] Event notice hook executed!
+[Mon Jul 21 10:26:01 2003] XML notice was:
+[Mon Jul 21 10:26:01 2003]      Host:     [natch.8d.com]
+[Mon Jul 21 10:26:01 2003]      Client:   [logparser]
+[Mon Jul 21 10:26:01 2003]      Date:     [Mon Jul 21 10:26:01 2003]
+[Mon Jul 21 10:26:01 2003]      Data:     [] U=qmailr P=smtp S=2311 id=20030721142336.GL2394@home.nil]
+[Mon Jul 21 10:26:01 2003]      Metric:   [0]
+[Mon Jul 21 10:26:01 2003]      Type:     [0]
+[Mon Jul 21 10:26:01 2003]      Sound:    [incoming]
+[Mon Jul 21 10:26:01 2003]      Location: [128]
+[Mon Jul 21 10:26:01 2003]      Priority: [0]
+[Mon Jul 21 10:26:01 2003]      Volume:   [255]
+[Mon Jul 21 10:26:01 2003]      Dither:   [-1]
+[Mon Jul 21 10:26:01 2003]      Flags:    [0x0000]
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] Received Event:
+[Mon Jul 21 10:26:01 2003]      type:   0
+[Mon Jul 21 10:26:01 2003]      len:    8
+[Mon Jul 21 10:26:01 2003]      sound:  incoming
+[Mon Jul 21 10:26:01 2003]      loc:    128
+[Mon Jul 21 10:26:01 2003]      prior:  0
+[Mon Jul 21 10:26:01 2003]      vol:    255
+[Mon Jul 21 10:26:01 2003]      dither: 255
+[Mon Jul 21 10:26:01 2003]      flags:  0x0000
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] We found a channel right away: 2
+[Mon Jul 21 10:26:01 2003] Mixing in sound on channel: 2
+[Mon Jul 21 10:26:01 2003] Sound added to channel [2]:
+[Mon Jul 21 10:26:01 2003]      length:      [21972]
+[Mon Jul 21 10:26:01 2003]      stereo pos:  [0.501961]
+[Mon Jul 21 10:26:01 2003]      filter flag: [0x000]
+[Mon Jul 21 10:26:01 2003] 
+[Mon Jul 21 10:26:01 2003] For channel [2], using dynamic volume multiplier of [0.229167].
+[Mon Jul 21 10:26:01 2003] Positions of currently playing sounds:
+[Mon Jul 21 10:26:01 2003]        0(     0)  1(     0)  2(     0)  3(     0)  4(     0)
+[Mon Jul 21 10:26:01 2003]        5(     0)  6(     0)  7(     0)  8(     0)  9(     0)
+[Mon Jul 21 10:26:01 2003]       10(     0) 11(     0)
+[Mon Jul 21 10:26:01 2003] Total dynamic volume for [2] channels is: 0.729167
+[Mon Jul 21 10:26:01 2003] Assigned to startt for bestc: 1058797561.676394 on channel: 2
+[Mon Jul 21 10:26:01 2003] 
+

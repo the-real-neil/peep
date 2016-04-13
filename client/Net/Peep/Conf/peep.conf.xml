@@ -1,0 +1,167 @@
+<?xml version='1.0' encoding='UTF-8' standalone='no'?>
+
+<configuration>
+  <!--
+     Peep:  The Network Auralizer - Main configuration file
+  -->
+  <general>
+    <version>0.5.1</version>
+    <!-- Path where the sounds are stored -->
+    <soundpath>/usr/local/share/peep/sounds</soundpath>
+    <!-- These global options can be overridden by either -->
+    <!-- command-line options or options defined for a -->
+    <!-- specific client -->
+    <options>
+      <option name="logfile" value="/var/log/peep/peep.log">
+      <option name="debug" value="3">
+    </options>
+  </general>
+  <notification interval="21600">
+    <relays>
+      <host name="localhost" ip="127.0.0.1">
+    </relays>
+  </notification>
+  <classes>
+    <class name="main" port="2000">
+      <servers>
+        <server name="darktower" port="2001"/>
+      </servers>
+    </class>
+  </classes>
+  <themes>
+    <theme name="Collin's Theme">
+      <sounds>
+        <sound>
+          <name>whistle-01</name>
+          <category>wetlands</category>
+          <type>coupled</type>
+          <format>raw</format>
+          <description></description>
+          <path>wetlands/coupled/whistle-01</path>
+        </sound>
+        <sound>
+          <name>light-chirps-04</name>
+          <category>wetlands</category>
+          <type>events</type>
+          <format>raw</format>
+          <description></description>
+          <path>wetlands/events/light-chirps-04</path>
+        </sound>
+        <sound>
+          <name>thrush-01</name>
+          <category>wetlands</category>
+          <type>events</type>
+          <format>raw</format>
+          <description></description>
+          <path>wetlands/events/thrush-01</name>
+        </sound>
+        <sound>
+          <name>doorbell</name>
+          <category>misc</category>
+          <type>events</type>
+          <format>raw</format>
+          <description>A "ding dong" doorbell sound</description>
+          <path>misc/events/doorbell</path>
+        </sound>
+        <sound>
+          <name>rooster</name>
+          <category>misc</category>
+          <type>events</type>
+          <format>raw</format>
+          <description>A rooster crow</description>
+          <path>misc/events/rooster</path>
+        </sound>
+      </sounds>
+      <events>
+        <event>
+          <name>http</name>
+          <sound>whistle-01</sound>
+          <description>Anybody who accesses a web page will trigger this event</description>
+        </event>
+        <event>
+          <name>su-login</name>
+          <sound>light-chirps-04</sound>
+          <description>If someone logs in as root, this event will be triggered</description>
+        </event>
+        <event>
+          <name>su-logout</name>
+          <sound>thrush-01</sound>
+          <description>When someone logs out of a root account, this event will be triggered</description>
+        </event>
+        <event>
+          <name>ping-yahoo</name>
+          <sound>doorbell</sound>
+          <description>When www.yahoo.com can't be pinged, a doorbell will ring</description>
+        </event>
+        <event>
+          <name>red-hat</name>
+          <sound>rooster</sound>
+          <description>When Red Hat (RHAT) goes above or below a certain price, a rooster will crow</description>
+        </event>
+      </events>
+      <states>
+        <state>
+          <name>loadavg</name>
+          <path>water-01</path>
+          <description>
+            The sound of running water gets progressively stronger 
+            as the 5 minute load average increases
+          </description>
+          <threshhold>
+            <level>0.5</level>
+            <fade>0.5</fade>
+          <threshhold>
+        </state>
+      </states>
+      <clients>
+        <client name="logparser">
+          <options>
+            <option>
+              <name>logfile</name>
+              <value>/var/log/messages,/var/log/syslog</value>
+            </option>
+          </options>
+          <configuration>
+            # All patterns matched are done using Perl/awk matching syntax
+            # Commented lines are ones that BEGIN with a '#'
+            # Reference letters are used for the default section as well as
+            # the command line options -events and -logfile.
+            #·
+            # Name      Reference-Letter    Location     Priority             Pattern·
+            #
+            out-mail           O             0           1            "sendmail.*:.*from=<.*@(\w+\.)?eecs.tufts.edu>"
+            inc-mail           I            255          0            "sendmail.*:.*to=(\"|<.*@(\w+\.)?eecs.tufts.edu>).*stat=Sent"
+            login              L            128          0            "Login"
+            logout             l            128          0            "Logout"
+            #ssh-logins        S            128          2            "sshd.*Connection from"
+            bad-query          Q            128          3            "unapproved query"
+            su                 U            128         255           "(su.*root)|(su: SU)"
+            badsu              B            128         255
+"authentication failure"
+            </configuration>
+            <notification level="warn">
+              <hosts>
+                <host name="localhost" ip="127.0.0.1"/>
+              </hosts>
+              <recipients>
+                <recipient email="bogus.user@bogusdomain.com"/>
+                <recipient email="bogus.admin@bogusdomain.com"/>
+              </recipients>
+            </notification>
+        </client>
+        <client name="sysmonitor">
+          <configuration>
+            # You can figure out what options these correspond to by doing a Uptime -help
+            sleep      60         # Number of seconds to sleep
+            loadsound  loadavg    # The sound to use when playing a load sound
+            userssound users      # The sound to use for number of users
+            maxload    2.5        # The initial value to consider maximum load
+            maxusers   200        # The initial value to consider a lot of users
+            loadloc    128        # Stereo location for load sounds
+            usersloc   128        # Stereo location for user sounds
+          </configuration>
+        </client>
+      </clients>
+    </theme>
+  </themes>
+</configuration>

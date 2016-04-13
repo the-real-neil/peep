@@ -1,0 +1,37 @@
+This module consists of client libraries and executables for Peep: The
+Network Auralizer.
+
+For more information, consult
+
+  http://peep.sourceforge.net
+
+or 
+
+  collin.starkweather@collinstarkweather.com
+
+Full documentation on the Peep client libraries can be found by
+installing Net::Peep, then typing
+
+  perldoc Net::Peep 
+
+from the command prompt.  
+
+My responses may or may not be timely depending on what kind of mood
+I'm in, though in general I try to answer my mail promptly.
+
+Installation
+------------
+
+To install this module, use the time-honored
+
+  perl Makefile.PL
+  make
+  make test
+  make install
+
+You may also install the latest stable version from the CPAN via
+
+  perl -MCPAN -e "install Net::Peep"
+
+so long as you say thanks to Andreas König, without whom CPAN.pm
+would not exist.

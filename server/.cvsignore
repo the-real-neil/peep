@@ -1,0 +1,5 @@
+.deps
+Makefile
+cmdline.ggo
+config.c
+peepd

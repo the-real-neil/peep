@@ -1,0 +1,89 @@
+#
+# Client configuration for Peep: The Network Auralizer client:
+#   sysmonitor
+
+client sysmonitor
+  class main
+  port 1999
+  default
+      sleep      60       # Number of seconds to sleep
+      output    /var/log/peep/sysmonitor.log
+  end default
+  config
+    uptime
+        # Name     State   Value   Location  Priority      Notification  Hosts
+	maxload    loadavg  2.5    128       0             crit          localhost  # The initial value to consider maximum load
+	maxusers   users    10     128       0             crit          localhost  # The initial value to consider a lot of users
+    end uptime
+    procs
+
+        # Specify which and the number of processes that you would
+        # like to see running.  Useful for Apache, MySQL, Oracle,
+        # crond, sshd, etc. monitoring
+
+        # Name can be a substring; e.g., httpd will catch all
+        # /opt/apache/bin/httpd and /usr/sbin/httpd processes
+
+        # Max is the maximum number of processes that should be
+        # running.  If there is no maximum, specify a very large
+        # number or the word 'inf'.
+
+        # Min is the maximum number of processes that should be
+        # running.  If there is no minimum, specify 0.
+
+        # Notification is the notification level if the number of
+        # processes exceeds the maximum or is less than the minimum.
+        # See the POD documentation for Net::Peep::Notification for
+        # more information on notification levels.
+
+        # Hosts is the name of the hosts on which this check will be
+        # performed, separated by commas.  The string 'localhost' or
+        # IP address '127.0.0.1' effectively causes the check to be
+        # performed on all hosts.  A host can be specified by the host
+        # name (probably whatever is returned by the hostname command)
+        # or an IP address.
+
+        # Name   Event      Max   Min    Location   Priority    Notification  Hosts
+
+        httpd    bad-proc   30    1      128        0           crit          cournot.colorado.edu,www.collinstarkweather.com
+        sshd     bad-proc   inf   1      128        0           warn          localhost
+        crond    bad-proc   1     1      128        0           crit          localhost
+        lpd      bad-proc   inf   1      128        0           warn          morgenstern
+
+    end procs
+    disk
+
+        # Specify the maximum diskspace usage for various filesystems.
+
+        # Name can be a substring; e.g., fd will catch all
+        #  processes
+
+        # Max is the maximum percent of disk space usage allowed;
+        # e.g., 80 if you want to be notified when more than 80% of a
+        # disk's capacity is being used.
+
+        # Notification is the notification level if the percentage of
+        # disk space used exceeds the maximum.  See the POD
+        # documentation for Net::Peep::Notification for more
+        # information on notification levels.
+
+        # Hosts is the name of the hosts on which this check will be
+        # performed, separated by commas.  The string 'localhost' or
+        # IP address '127.0.0.1' effectively causes the check to be
+        # performed on all hosts.  A host can be specified by the host
+        # name (probably whatever is returned by the hostname command)
+        # or an IP address.
+
+        # Currently only Solaris, Linux, BSD, and Irix are supported.
+
+        # Name  Event      Max  Location   Priority  Notification   Hosts
+        hda     bad-disk   90   128        0         crit           localhost
+    end disk
+  end config
+  notification
+    # See above for more information on notification settings
+    notification-hosts localhost
+    notification-recipients collin.starkweather@colorado.edu
+    notification-level crit
+  end notification
+end client sysmonitor

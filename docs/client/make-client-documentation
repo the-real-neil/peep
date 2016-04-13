@@ -1,0 +1,250 @@
+#!/usr/bin/perl
+
+=head1 USAGE
+
+./make-client-documentation [--style=[homepage|pause]]
+
+where the style determines the style of the names of the
+HTML files; e.g., Net::Peep::Data.html for "pause" style
+and Net_Peep_Data.html for "homepage" style.
+
+Contact Collin at
+
+  collin.starkweather@collinstarkweather.com
+
+for more information.
+
+=cut
+
+use strict;
+use Pod::Html;
+use Getopt::Long;
+
+my %files = (
+
+		# core classes
+	       '../../client/Net/Peep/Peep.pm' => './peep-client/peep-client.html',
+	       '../../client/Net/Peep/BC/BC.pm' => './peep-client/Net::Peep::BC.html',
+	       '../../client/Net/Peep/Client/Client.pm' => './peep-client/Net::Peep::Client.html',
+	       '../../client/Net/Peep/Conf/Conf.pm' => './peep-client/Net::Peep::Conf.html',
+	       '../../client/Net/Peep/Log/Log.pm' => './peep-client/Net::Peep::Log.html',
+	       '../../client/Net/Peep/Notifier/Notifier.pm' => './peep-client/Net::Peep::Notifier.html',
+	       '../../client/Net/Peep/Parser/Parser.pm' => './peep-client/Net::Peep::Parser.html',
+	       '../../client/Net/Peep/Data/Data.pm' => './peep-client/Net::Peep::Data.html',
+               '../../client/Net/Peep/Data/Client/Client.pm' => './peep-client/Net::Peep::Client.html',
+               '../../client/Net/Peep/Data/Client/Notification/Notification.pm' => './peep-client/Net::Peep::Data::Client::Notification.html',
+               '../../client/Net/Peep/Data/Event/Event.pm' => './peep-client/Net::Peep::Data::Event.html',
+               '../../client/Net/Peep/Data/Events/Events.pm' => './peep-client/Net::Peep::Data::Events.html',
+               '../../client/Net/Peep/Data/Host/Host.pm' => './peep-client/Net::Peep::Data::Host.html',
+               '../../client/Net/Peep/Data/Sound/Sound.pm' => './peep-client/Net::Peep::Data::Sound.html',
+               '../../client/Net/Peep/Data/Sounds/Sounds.pm' => './peep-client/Net::Peep::Data::Sounds.html',
+               '../../client/Net/Peep/Data/State/State.pm' => './peep-client/Net::Peep::Data::State.html',
+               '../../client/Net/Peep/Data/State/ThreshHold/ThreshHold.pm' => './peep-client/Net::Peep::Data::State::ThreshHold.html',
+               '../../client/Net/Peep/Data/State/ThreshHolds/ThreshHolds.pm' => './peep-client/Net::Peep::Data::State::ThreshHolds.html',
+               '../../client/Net/Peep/Data/States/States.pm' => './peep-client/Net::Peep::Data::States.html',
+               '../../client/Net/Peep/Data/Theme/Theme.pm' => './peep-client/Net::Peep::Data::Theme.html',
+               '../../client/Net/Peep/Data/Themes/Themes.pm' => './peep-client/Net::Peep::Data::Themes.html',
+               '../../client/Net/Peep/Data/Conf/Class/Server/Server.pm' => './peep-client/Net::Peep::Data::Conf::Class::Server.html',
+               '../../client/Net/Peep/Data/Conf/Class/Class.pm' => './peep-client/Net::Peep::Data::Conf::Class.html',
+               '../../client/Net/Peep/Data/Conf/Class/Servers/Servers.pm' => './peep-client/Net::Peep::Data::Conf::Class::Servers.html',
+               '../../client/Net/Peep/Data/Conf/General/General.pm' => './peep-client/Net::Peep::Data::Conf::General.html',
+               '../../client/Net/Peep/Data/Conf/Conf.pm' => './peep-client/Net::Peep::Data::Conf.html',
+               '../../client/Net/Peep/Data/Conf/Classes/Classes.pm' => './peep-client/Net::Peep::Data::Conf::Classes.html',
+               '../../client/Net/Peep/Data/Notice/Notice.pm' => './peep-client/Net::Peep::Data::Notice.html',
+               '../../client/Net/Peep/Data/Option/Option.pm' => './peep-client/Net::Peep::Data::Option.html',
+               '../../client/Net/Peep/Data/Options/Options.pm' => './peep-client/Net::Peep::Data::Options.html',
+               '../../client/Net/Peep/Data/Clients/Clients.pm' => './peep-client/Net::Peep::Data::Clients.html',
+
+		# data classes
+             '../../client/Net/Peep/Data/Data.pm' => './peep-client/Net::Peep::Data.html',
+             '../../client/Net/Peep/Data/XML/XML.pm' => './peep-client/Net::Peep::Data::XML.html',
+             '../../client/Net/Peep/Data/Pool/Pool.pm' => './peep-client/Net::Peep::Data::Pool.html',
+             '../../client/Net/Peep/Data/Client/Client.pm' => './peep-client/Net::Peep::Data::Client.html',
+             '../../client/Net/Peep/Data/Client/Notification/Notification.pm' => './peep-client/Net::Peep::Data::Client::Notification.html',
+             '../../client/Net/Peep/Data/Event/Event.pm' => './peep-client/Net::Peep::Data::Event.html',
+             '../../client/Net/Peep/Data/Events/Events.pm' => './peep-client/Net::Peep::Data::Events.html',
+             '../../client/Net/Peep/Data/Host/Host.pm' => './peep-client/Net::Peep::Data::Host.html',
+             '../../client/Net/Peep/Data/Sound/Sound.pm' => './peep-client/Net::Peep::Data::Sound.html',
+             '../../client/Net/Peep/Data/Sounds/Sounds.pm' => './peep-client/Net::Peep::Data::Sounds.html',
+             '../../client/Net/Peep/Data/State/State.pm' => './peep-client/Net::Peep::Data::State.html',
+             '../../client/Net/Peep/Data/State/ThreshHold/ThreshHold.pm' => './peep-client/Net::Peep::Data::State::ThreshHold.html',
+             '../../client/Net/Peep/Data/State/ThreshHolds/ThreshHolds.pm' => './peep-client/Net::Peep::Data::State::ThreshHolds.html',
+             '../../client/Net/Peep/Data/States/States.pm' => './peep-client/Net::Peep::Data::States.html',
+             '../../client/Net/Peep/Data/Theme/Theme.pm' => './peep-client/Net::Peep::Data::Theme.html',
+             '../../client/Net/Peep/Data/Themes/Themes.pm' => './peep-client/Net::Peep::Data::Themes.html',
+             '../../client/Net/Peep/Data/Conf/Class/Server/Server.pm' => './peep-client/Net::Peep::Data::Conf::Class::Server.html',
+             '../../client/Net/Peep/Data/Conf/Class/Class.pm' => './peep-client/Net::Peep::Data::Conf::Class.html',
+             '../../client/Net/Peep/Data/Conf/Class/Servers/Servers.pm' => './peep-client/Net::Peep::Data::Conf::Class::Servers.html',
+             '../../client/Net/Peep/Data/Conf/General/General.pm' => './peep-client/Net::Peep::Data::Conf::General.html',
+             '../../client/Net/Peep/Data/Conf/Conf.pm' => './peep-client/Net::Peep::Data::Conf.html',
+             '../../client/Net/Peep/Data/Conf/Classes/Classes.pm' => './peep-client/Net::Peep::Data::Conf::Classes.html',
+             '../../client/Net/Peep/Data/Notice/Notice.pm' => './peep-client/Net::Peep::Data::Notice.html',
+             '../../client/Net/Peep/Data/Option/Option.pm' => './peep-client/Net::Peep::Data::Option.html',
+             '../../client/Net/Peep/Data/Options/Options.pm' => './peep-client/Net::Peep::Data::Options.html',
+             '../../client/Net/Peep/Data/Clients/Clients.pm' => './peep-client/Net::Peep::Data::Clients.html',
+
+
+		# clients
+	       '../../client/Net/Peep/bin/logparser' => './peep-client/logparser.html',
+	       '../../client/Net/Peep/bin/pinger' => './peep-client/pinger.html',
+	       '../../client/Net/Peep/bin/sysmonitor' => './peep-client/sysmonitor.html',
+	       '../../client/Net/Peep/bin/peck' => './peep-client/peck.html',
+	       '../../client/Net/Peep/bin/keytest' => './peep-client/keytest.html'
+	       );
+
+my %regex = (
+
+             # core classes
+             '  Net::Peep::BC        The Peep broadcast module.  Used to notify Peep' =>
+             '  <A HREF="./Net::Peep::BC.html">Net::Peep::BC</A>             The Peep broadcast module.  Used to notify Peep',
+             '  Net::Peep::Client    Base and utility class for Peep clients and' => 
+             '  <A HREF="./Net::Peep::Client.html">Net::Peep::Client</A>    Base and utility class for Peep clients and',
+             '  Net::Peep::Conf      The Peep configuration object.  An  ' => 
+             '  <A HREF="./Net::Peep::Conf.html">Net::Peep::Conf</A>      The Peep configuration object.  An  ',
+             '  Net::Peep::Log       Provides utility methods for logging, debugging,' =>
+             '  <A HREF="./Net::Peep::Log.html">Net:::Peep::Log</A>       Provides utility methods for logging, debugging,',
+             '  Net::Peep::Notifier  A class Peep uses to send out e-mail' =>
+             '  <A HREF="./Net::Peep::Notifier.html">Net::Peep::Notifier</A>  A class Peep uses to send out e-mail',
+             '  Net::Peep::Parser    The Peep configuration file parser.  Reads' =>
+             '  <A HREF="./Net::Peep::Parser.html">Net::Peep::Parser</A>    The Peep configuration file parser.  Reads',
+
+             # data classes
+             '  Net::Peep::Data      Superclass for Peep data objects representing' => '  <A HREF="./Net::Peep::Data.html">Net::Peep::Data</A>      Superclass for Peep data objects representing',
+             '  Net::Peep::Data::XML' => '  <A HREF="./Net::Peep::Data::XML.html">Net::Peep::Data::XML</A>',
+             '  Net::Peep::Data::Pool' => '  <A HREF="./Net::Peep::Data::Pool.html">Net::Peep::Data::Pool</A>',
+             '  Net::Peep::Data::Client' => '  <A HREF="./Net::Peep::Data::Client.html">Net::Peep::Data::Client</A>',
+             '  Net::Peep::Data::Client::Notification' => '  <A HREF="./Net::Peep::Data::Client::Notification.html">Net::Peep::Data::Client::Notification</A>',
+             '  Net::Peep::Data::Event' => '  <A HREF="./Net::Peep::Data::Event.html">Net::Peep::Data::Event</A>',
+             '  Net::Peep::Data::Events' => '  <A HREF="./Net::Peep::Data::Events.html">Net::Peep::Data::Events</A>',
+             '  Net::Peep::Data::Host' => '  <A HREF="./Net::Peep::Data::Host.html">Net::Peep::Data::Host</A>',
+             '  Net::Peep::Data::Sound' => '  <A HREF="./Net::Peep::Data::Sound.html">Net::Peep::Data::Sound</A>',
+             '  Net::Peep::Data::Sounds' => '  <A HREF="./Net::Peep::Data::Sounds.html">Net::Peep::Data::Sounds</A>',
+             '  Net::Peep::Data::State' => '  <A HREF="./Net::Peep::Data::State.html">Net::Peep::Data::State</A>',
+             '  Net::Peep::Data::State::ThreshHold' => '  <A HREF="./Net::Peep::Data::State::ThreshHold.html">Net::Peep::Data::State::ThreshHold</A>',
+             '  Net::Peep::Data::State::ThreshHolds' => '  <A HREF="./Net::Peep::Data::State::ThreshHolds.html">Net::Peep::Data::State::ThreshHolds</A>',
+             '  Net::Peep::Data::States' => '  <A HREF="./Net::Peep::Data::States.html">Net::Peep::Data::States</A>',
+             '  Net::Peep::Data::Theme' => '  <A HREF="./Net::Peep::Data::Theme.html">Net::Peep::Data::Theme</A>',
+             '  Net::Peep::Data::Themes' => '  <A HREF="./Net::Peep::Data::Themes.html">Net::Peep::Data::Themes</A>',
+             '  Net::Peep::Data::Conf::Class::Server' => '  <A HREF="./Net::Peep::Data::Conf::Class::Server.html">Net::Peep::Data::Conf::Class::Server</A>',
+             '  Net::Peep::Data::Conf::Class' => '  <A HREF="./Net::Peep::Data::Conf::Class.html">Net::Peep::Data::Conf::Class</A>',
+             '  Net::Peep::Data::Conf::Class::Servers' => '  <A HREF="./Net::Peep::Data::Conf::Class::Servers.html">Net::Peep::Data::Conf::Class::Servers</A>',
+             '  Net::Peep::Data::Conf::General' => '  <A HREF="./Net::Peep::Data::Conf::General.html">Net::Peep::Data::Conf::General</A>',
+             '  Net::Peep::Data::Conf' => '  <A HREF="./Net::Peep::Data::Conf.html">Net::Peep::Data::Conf</A>',
+             '  Net::Peep::Data::Conf::Classes' => '  <A HREF="./Net::Peep::Data::Conf::Classes.html">Net::Peep::Data::Conf::Classes</A>',
+             '  Net::Peep::Data::Notice' => '  <A HREF="./Net::Peep::Data::Notice.html">Net::Peep::Data::Notice</A>',
+             '  Net::Peep::Data::Option' => '  <A HREF="./Net::Peep::Data::Option.html">Net::Peep::Data::Option</A>',
+             '  Net::Peep::Data::Options' => '  <A HREF="./Net::Peep::Data::Options.html">Net::Peep::Data::Options</A>',
+             '  Net::Peep::Data::Clients' => '  <A HREF="./Net::Peep::Data::Clients.html">Net::Peep::Data::Clients</A>',
+
+             # clients
+             '  logparser            Generates events based on matching regular' =>
+             '  <A HREF="./logparser.html">logparser</A>            Generates events based on matching regular',
+             '  pinger               Generates events based on whether a host' =>
+             '  <A HREF="./pinger.html">pinger</A>               Generates events based on whether a host',
+             '  sysmonitor           Generates events based on system events (e.g.,' =>
+             '  <A HREF="./sysmonitor.html">sysmonitor</A>           Generates events based on system events (e.g.,',
+             '  peck                 Generates ad hoc Peep events.  Primarily for ' => 
+             '  <A HREF="./peck.html">peck</A>                 Generates ad hoc Peep events.  Primarily for ',
+             '  keytest              Generates ad hoc Peep events.  Primarily for ' => 
+             '  <A HREF="./keytest.html">keytest</A>              Generates ad hoc Peep events.  Primarily for '
+	     );
+
+map { die "Error:  $_ not found" unless -e } sort keys %files;
+
+print "\n";
+
+my $style = 'pause';
+my %options = ('style=s' => \$style);
+
+GetOptions(%options);
+
+if ($style eq 'homepage') {
+
+	%files = &homepagefiles(%files);
+	%regex = &homepageregex(%regex);
+
+} 
+
+unless (-d './peep-client') {
+	print "The directory [./peep-client] was not found.  Create it?  [y/n]  ";
+	my $ans = <STDIN>;
+	if ($ans =~ /y/) {
+		print "\tCreating directory [./peep-client]\n";
+		mkdir('./peep-client') 
+			|| die "Error creating directory [./peep-client]:  $!";
+		print "\t\tDone.\n";
+	} else {
+		print "\nBe that way then.  Aborting.\n\n";
+		exit 0;
+	}
+}
+
+
+for my $file (sort keys %files) {
+
+    my $title = $files{$file};
+    $title =~ s/\.html$//;
+    $title =~ s/\_/::/g;
+    $title =~ s/^\.\/peep-client\///;
+    $title =~ s|^client/||;
+    $title =~ s/^peep-client$/Peep/;
+    print "Generating HTML for $file ($files{$file}) ($title) ...\n";
+    pod2html( "--infile=$file", "--outfile=$files{$file}", "--title=$title", "--header" );
+    print "\tDone.\n";
+
+}
+    
+print "Modifying peep-client.html ...\n";
+
+open (F,'./peep-client/peep-client.html') || die "Cannot open peep-client.html:  $!";
+my $html = join '', <F>;
+close F;
+for my $each (keys %regex) {
+    my $regex = quotemeta($each);
+    if ($html =~ /$regex/s) {
+        print "\tFound regex [" . substr($each,0,40) ."]\n";
+        print "\t\tSubstituting [" . substr($regex{$each},0,40) ."]\n";
+        $html =~ s/$regex/$regex{$each}/s;
+    } else {
+        print "\tError:  Cannot find regex [" . substr($each,0,40) ."]!\n";
+    }
+}
+open (F,'>./peep-client/peep-client.html') || die "Cannot open peep-client.html:  $!";
+print F $html;
+close F;
+
+print "\tDone.\n";
+
+#print "Copying HTML files to the Peep docs directory ...\n";
+#print `cp -f peep-client.html ../../docs`;
+#print `cp -f client/*.html ../../docs/client`;
+#print "\tDone.\n";
+
+print "\nDone.\n\n";
+
+sub homepagefiles {
+
+	my %files = @_;
+	for my $key (keys %files) {
+		my $value = $files{$key};
+		$value =~ s/::/_/g;
+		$files{$key} = $value;
+	}
+	return %files;
+
+} # end sub homepagefiles
+
+sub homepageregex {
+
+	my %regex = @_;
+	for my $key (keys %regex) {
+		my $value = $regex{$key};
+		$value =~ /HREF="(.*?)"/;
+		my $link = $1;
+		$link =~ s/::/_/g;
+		$value =~ s/HREF=".*?"/HREF="$link"/;
+		$regex{$key} = $value;
+	}
+	return %regex;
+
+} # end sub homepageregex

@@ -1,0 +1,7 @@
+\bCVS\b
+^MANIFEST\.
+~$
+\.html$
+\.old$
+^blib/
+^MakeMaker-\d

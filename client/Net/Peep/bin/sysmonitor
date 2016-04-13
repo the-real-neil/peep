@@ -1,0 +1,579 @@
+#!/usr/bin/perl
+
+require 5.00503;
+use strict;
+# use warnings; # commented out for 5.005 compatibility
+use Carp;
+use Sys::Hostname;
+use Net::Peep::Notifier;
+use Net::Peep::Notification;
+use Net::Peep::Client;
+use Net::Peep::Data::Notice;
+use Net::Peep::Host::Pool;
+use Proc::ProcessTable;
+use Filesys::DiskFree;
+
+use vars qw{ $LOGGER $PECKER @UPTIME @PROC @DISK };
+
+# The default pidfile used by sysmonitor
+use constant DEFAULT_PID_FILE => "/var/run/sysmonitor.pid";
+
+$LOGGER = new Net::Peep::Log;
+
+my $client = new Net::Peep::Client;
+
+$client->name('sysmonitor');
+
+my $loadsound = '';
+my $userssound = '';
+my $loadloc = '';
+my $usersloc = '';
+my $sleep = 60;
+my $maxload = 2.0;
+my $maxusers = 5;
+my $pidfile = DEFAULT_PID_FILE;
+
+my %options = (
+		'loadsound=s' => \$loadsound,       # the load sound
+		'userssound=s' => \$userssound,     # The users sound
+		'loadloc=s' => \$loadloc,           # The location of the load sound
+		'usersloc=s' => \$usersloc,         # The location of the users sound
+		'sleep=s' => \$sleep,               # sleep time
+		'maxload=s' => \$maxload,           # What to consider a high load
+		'maxusers=s' => \$maxusers,         # What to consider a high number of users
+		'pidfile=s' => \$pidfile,           # Path to write the pid out to
+	      );
+
+$client->initialize(%options) || $client->pods();
+
+$LOGGER->debug(9,"Registering parser ...");
+$client->parser(sub { my @text = @_; &parse($client,@text); });
+$LOGGER->debug(9,"\tParser registered ...");
+
+$LOGGER->debug(9,"Parsing configuration ...");
+my $conf = $client->configure();
+$LOGGER->debug(9,"\tConfiguration parsed ...");
+
+$PECKER = Net::Peep::BC->new($conf );
+
+unless ($conf->getOption('autodiscovery')) {
+	$client->pods("Error:  Without autodiscovery you must provide a server and port option.")
+	    unless $conf->optionExists('server') && $conf->optionExists('port') &&
+		$conf->getOption('server') && $conf->getOption('port');
+}
+
+my @gotgroups = $client->getGroups();
+my @gotexclude = $client->getExcluded();
+
+$LOGGER->debug(1,"Recognized event groups are [@gotgroups]");
+$LOGGER->debug(1,"Excluded event groups are [@gotexclude]");
+
+# Check whether the pidfile option was set. If not, use the default
+unless ($conf->optionExists('pidfile')) {
+	$LOGGER->debug(3,"No pid file specified. Using default [" . DEFAULT_PID_FILE . "]");
+	$conf->setOption('pidfile', DEFAULT_PID_FILE);
+}
+
+# use the options defined in the configuration file if they were
+# not explicitly defined from the command-line
+$loadsound = $conf->getOption('loadsound') if ! $loadsound && $conf->optionExists('loadsound');
+$userssound = $conf->getOption('userssound') if ! $userssound && $conf->optionExists('userssound');
+$loadloc = $conf->getOption('loadloc') if ! $loadloc && $conf->optionExists('loadloc');
+$usersloc = $conf->getOption('usersloc') if ! $usersloc && $conf->optionExists('usersloc');
+$sleep = $conf->getOption('sleep') if ! $sleep && $conf->optionExists('sleep');
+$maxload = $conf->getOption('maxload') if ! $maxload && $conf->optionExists('maxload');
+$maxusers = $conf->getOption('maxusers') if ! $maxusers && $conf->optionExists('maxusers');
+
+$LOGGER->debug(9,"loadsound=[$loadsound] userssound=[$userssound] loadloc=[$loadloc] usersloc=[$usersloc] sleep=[$sleep] maxload=[$maxload] maxusers=[$maxusers] ...");
+
+# Register a callback for the main loop
+$LOGGER->debug(9,"Registering callback ...");
+$client->callback(sub { &loop($client,$conf); });
+$LOGGER->debug(9,"\tCallback registered ...");
+
+# Some signal handling to promote clean exits
+$SIG{'INT'} = $SIG{'TERM'} = sub { $client->shutdown(); exit 0; };
+
+$LOGGER->debug(9,"Executing main loop ...");
+$client->MainLoop($sleep);
+
+sub parse {
+
+    my $client = shift;
+    my $name = $client->name() || confess "Cannot parse sysmonitor events:  Client name attribute not set.";
+    my @text = @_;
+
+    my $conf = $client->conf() || confess "Cannot parse sysmonitor events:  Configuration object not found.";
+
+    $LOGGER->debug(1,"\t\tParsing events for client [$name] ...");
+
+    my @version = $client->conf()->versionExists() 
+	? split /\./, $client->conf()->getVersion()
+	    : ();
+
+    if ($client->conf()->versionOK()) {
+
+	my @uptime = &getConfigSection('uptime',@text);
+	my @procs = &getConfigSection('procs',@text);
+	my @disk = &getConfigSection('disk',@text);
+
+	&parseUptime($client,@uptime);
+	&parseProcs($client,@procs);
+	&parseDisk($client,@disk);
+
+    } else {
+
+	confess "You appear to be using a configuration file ".
+	        "version (".$client->conf()->getVersion().") ".
+	        "that is no longer supported.";
+
+    }
+
+} # end sub parse
+
+sub loop {
+
+	my $client = shift || confess "Cannot execute loop:  Client object not found.";
+	my $conf = shift || confess "Cannot execute loop:  Configuration object not found.";
+	
+	my ($loadsound,$userssound,$loadloc,$usersloc,$sleep,$maxload,$maxusers);
+	
+	$sleep = $conf->optionExists('sleep') 
+	    ? $conf->getOption('sleep') : undef;
+	
+	my @uptimes;
+	
+	my ($users,$load);
+	
+	my ($checkload,$checkusers) = (1,1);
+	
+	my $notifier = new Net::Peep::Notifier;
+	
+	# get information from the new configuration file format
+	for my $uptime (@UPTIME) {
+		if ($uptime->{'name'} eq 'maxload') {
+			$maxload = $uptime->{'value'};
+			$loadloc = $uptime->{'location'};
+			$loadsound = $uptime->{'state'};
+			$load = $uptime;
+			my $hosts = $uptime->{'hosts'};
+			unless ($client->filter($uptime,1)) {
+				$checkload = 0;
+			}
+		} elsif ($uptime->{'name'} eq 'maxusers') {
+			$maxusers = $uptime->{'value'};
+			$usersloc = $uptime->{'location'};
+			$userssound = $uptime->{'state'};
+			$users = $uptime;
+			my $hosts = $uptime->{'hosts'};
+			unless ($client->filter($uptime,1)) {
+				$checkusers = 0;
+			}
+		} else {
+			# do nothing
+		}
+	}
+
+	confess "Error:  You didn't define at least one of sleep time [$sleep], ".
+	    "load sound [$loadsound], user sound [$userssound], max load [$maxload], ".
+		"or max users [$maxusers] properly.\n".
+		    "        You may want to check peep.conf.\n"
+			unless $sleep > 0 
+			    and $loadsound and $userssound 
+				and $maxload and $maxusers;
+    
+	my ($in, $avg, $nusers, $uptime);
+	confess "Error:  Can't find uptime: $!" unless $uptime = `which uptime`;
+	chomp($uptime);
+	confess "Error:  $uptime returned no output: $!" unless $in = `$uptime`;
+	
+	$LOGGER->debug(3,"$uptime: $in");
+    
+	$nusers = $1 if $in =~ /(\d+) users/; 
+	$avg = $1   if $in =~ /load average. ([\d\.]+)/;
+	
+	if ($checkload) {
+		
+		my $loadmsg = "${Net::Peep::Notifier::HOSTNAME}:  load:  The 1 minute load average is [$avg].  (Max load is [$maxload].)";
+		$LOGGER->debug(6,$loadmsg);
+		# Scale relative to maximum value with max volume being 255
+		my $loadvol = $avg > $maxload ? 255.0 : int(255.0 * $avg / $maxload);
+		my $status = $avg > $maxload ? $load->{'notification'} : 'info';
+		if ($maxload > 0) {
+			
+			my $notice = new Net::Peep::Data::Notice;
+			$notice->host(hostname());
+			$notice->client('sysmonitor');
+			$notice->type(1);
+			$notice->sound($loadsound);
+			$notice->location($loadloc);
+			$notice->volume($loadvol);
+			$notice->date(time);
+			$notice->data($loadmsg);
+			$notice->metric($avg);
+			$notice->level($status);
+			$PECKER->send($notice);
+		}
+    
+		# check whether we should send notifications based on load
+		if ($avg > $maxload) {
+			my $notification = new Net::Peep::Notification;
+			$notification->client($client->name());
+			$notification->hostname($Net::Peep::Notifier::HOSTNAME);
+			$notification->status($status);
+			$notification->datetime(time());
+			$notification->message("${Net::Peep::Notifier::HOSTNAME}:  load:  ".
+					       "1 minute Load average is [$avg].  It should be at most [$maxload].");
+			$notifier->notify($notification);
+		}
+	}
+	
+	if ($checkusers) {
+		
+		my $usersmsg .= "${Net::Peep::Notifier::HOSTNAME}:  users:  The number of users is [$nusers].  (Max users is [$maxusers].)";
+
+		$LOGGER->debug(6,$usersmsg);
+		my $uservol = $maxusers < $nusers ? 255.0 : int(255.0 * $nusers / $maxusers);
+		my $status = $nusers > $maxusers ? $users->{'notification'} : 'info';
+		if ($maxusers > 0) {
+			my $notice = new Net::Peep::Data::Notice;
+			$notice->host(hostname());
+			$notice->client('sysmonitor');
+			$notice->type(1);
+			$notice->sound($userssound);
+			$notice->location($usersloc);
+			$notice->volume($uservol);
+			$notice->date(time);
+			$notice->data($usersmsg);
+			$notice->metric($avg);
+			$notice->level($status);
+			$PECKER->send($notice);
+		}
+	
+		# check whether we should send notifications based on users
+		if ($nusers > $maxusers) {
+			$LOGGER->debug(6,"Sending notification based on load observation.");
+			my $notification = new Net::Peep::Notification;
+			$notification->client($client->name());
+			$notification->hostname($Net::Peep::Notifier::HOSTNAME);
+			$notification->status($users->{'notification'});
+			$notification->datetime(time());
+			$notification->message($usersmsg);
+			$notifier->notify($notification);
+		}
+	}
+	    
+	# now for the procs ...
+	my @procs = grep $client->filter($_,1), @PROC;
+	
+	my $table = new Proc::ProcessTable;
+	
+	for my $proc (@procs) {
+		my $name = $proc->{'name'};
+		my $hosts = $proc->{'hosts'};
+		my $max = $proc->{'max'};
+		my $min = $proc->{'min'};
+		my $count = 0;
+		my $p = $table->table();
+		$LOGGER->debug(6,"Checking process [$name] ...");
+		map { $count++ if $_->cmndline() =~ /$name/ } @$p;
+		$LOGGER->debug(6,"\t[$count] processes whose command line matches [$name] are running.");
+		my $procmsg;
+		if ( ( $max ne 'inf' && $count > $max ) || 
+		     ( $count < $min ) ) {
+			
+			$procmsg = "Sending notification because too many [$name] processes are running." if $max ne 'inf' && $count > $max;
+			$procmsg = "Sending notification because too few [$name] processes are running." if $count < $min;
+			$LOGGER->debug(6,$procmsg);
+			my $notice = new Net::Peep::Data::Notice;
+			$notice->host(hostname());
+			$notice->client('sysmonitor');
+			$notice->type(0);
+			$notice->sound($proc->{'event'});
+			$notice->location($proc->{'location'});
+			$notice->volume(255);
+			$notice->date(time);
+			$notice->data($procmsg);
+			$notice->metric($count);
+			$notice->level($proc->{'notification'});
+			$PECKER->send($notice);
+			my $notification = new Net::Peep::Notification;
+			$notification->client($client->name());
+			$notification->hostname($Net::Peep::Notifier::HOSTNAME);
+			$notification->status($proc->{'notification'});
+			$notification->datetime(time());
+			$notification->message($procmsg);
+			$notifier->notify($notification);
+		}
+	} 
+	
+	# now for the disk utilization
+	my @disks = grep $client->filter($_,1), @DISK;
+	my $handle = new Filesys::DiskFree;
+	$handle->df();
+	my @d = $handle->disks();
+	for my $disk (@disks) {
+		my $name = $disk->{'name'};
+		my $hosts = $disk->{'hosts'};
+		my $name = $disk->{'name'};
+		my $max = $disk->{'max'};
+		$LOGGER->debug(6,"Checking disk pattern [$name] ...");
+		my $regex = quotemeta($name);
+		for my $d (@d) {
+			my $mount = $handle->mount($d);
+			my $used = $handle->used($d);
+			my $total = $handle->total($d);
+			my $device = $handle->device($d);
+			my $utilization = ( $used / $total ) * 100;
+			$LOGGER->debug(8,"\tChecking disk [$mount] on device [$device] ...");
+			if ($device =~ /$regex/) {
+				$LOGGER->debug(8,"\t\tDisk [$mount] matches.");
+				if ( $utilization > $max ) {
+					my $diskmsg = sprintf "${Net::Peep::Notifier::HOSTNAME}:  $name:  Disk [$mount] is at [%5.2f\%] capacity.  It should be at most [$max\%].", $utilization;
+					$LOGGER->debug(6,$diskmsg);
+					my $notice = new Net::Peep::Data::Notice;
+					$notice->host(hostname());
+					$notice->client('sysmonitor');
+					$notice->type(1);
+					$notice->sound($disk->{'event'});
+					$notice->location($disk->{'location'});
+					$notice->volume(255);
+					$notice->date(time);
+					$notice->data($diskmsg);
+					$notice->metric($utilization);
+					$notice->level($disk->{'notification'});
+					$PECKER->send($notice);
+					my $notification = new Net::Peep::Notification;
+					$notification->client($client->name());
+					$notification->hostname($Net::Peep::Notifier::HOSTNAME);
+					$notification->status($disk->{'notification'});
+					$notification->datetime(time());
+					$notification->message($diskmsg);
+					$notifier->notify($notification);
+				}
+			}
+		} 
+	}
+		    
+} # end sub loop
+
+sub getConfigSection {
+
+    my $section = shift;
+    my @text = @_;
+
+    my @return;
+    my $read = 0;
+    for my $line (@text) {
+	if ($line =~ /^\s*$section/) {
+	    $read = 1;
+	} elsif ($line =~ /^\s*end events/) {
+	    $read = 0;
+	} elsif ($read) {
+	    next if $line =~ /^\s*#/ || $line =~ /^\s*$/;
+	    push @return, $line;
+	} else {
+	    # do nothing
+	}
+    }
+    return wantarray ? @return : \@return;
+
+} # end sub getConfigSection
+
+sub parseUptime {
+
+	my $client = shift;
+	my @text = @_;
+
+	my $name = $client->name() || confess "Cannot process uptime definitions:  No client name found.";
+
+	$LOGGER->debug(1,"\t\tParsing uptime settings for client [$name] ...");
+
+	while (my $line = shift @text) {
+		next if $line =~ /^\s*$/ or $line =~ /^\s*#/;
+
+		if ($line =~ /^\s*([\w]+)\s+([\w]+)\s+([\d\.]+)\s+(\d+)\s+(\d+)\s+(info|warn|crit)\s+([\w\-\.]+)/) {
+
+		    my ($name,$state,$value,$location,$priority,$notification,$hosts) = 
+			($1,$2,$3,$4,$5,$6,$7);
+
+		    my $uptime = {};
+
+		    $uptime->{'name'} = $name;
+		    $uptime->{'state'} = $state;
+		    $uptime->{'value'} = $value;
+		    $uptime->{'location'} = $location;
+		    $uptime->{'priority'} = $priority;
+		    $uptime->{'notification'} = $notification;
+		    $uptime->{'hosts'} = $hosts;
+		    my $pool = new Net::Peep::Host::Pool;
+		    $pool->addHosts($uptime->{'hosts'});
+		    $uptime->{'pool'} = $pool;
+				
+		    push @UPTIME, $uptime;
+		    $LOGGER->debug(1,"\t\t\tClient uptime setting [$name] added.");
+
+		}
+
+	}
+
+	return @text;
+
+} # end sub parseUptime
+
+sub parseProcs {
+
+    my $client = shift;
+    my @text = @_;
+    
+    my $name = $client->name() || confess "Cannot process proc definitions:  No client name found.";
+
+    $LOGGER->debug(1,"\t\tParsing proc list for client [$name] ...");
+    
+    while (my $line = shift @text) {
+	next if $line =~ /^\s*$/ or $line =~ /^\s*#/;
+	
+	if ($line =~ /^\s*([\w\-\.]+)\s+([\w\-]+)\s+(\d+|inf)\s+(\d+)\s+(\d+)\s+(\d+)\s+(info|warn|crit)\s+(.*)$/) {
+	    
+	    my ($name,$event,$max,$min,$location,$priority,$notification,$hosts) = 
+		($1,$2,$3,$4,$5,$6,$7,$8);
+	    
+	    my @hosts = split /\s*,\s*/, $hosts;
+	    
+	    my $proc = {};
+	    $proc->{'name'} = $name;
+	    $proc->{'event'} = $event;
+	    $proc->{'max'} = $max;
+	    $proc->{'min'} = $min;
+	    $proc->{'location'} = $location;
+	    $proc->{'priority'} = $priority;
+	    $proc->{'notification'} = $notification;
+	    $proc->{'hosts'} = $hosts;
+	    my $pool = new Net::Peep::Host::Pool;
+	    $pool->addHosts($proc->{'hosts'});
+	    $proc->{'pool'} = $pool;
+	    
+	    push @PROC, $proc;
+	    $LOGGER->debug(1,"\t\t\tClient proc [$name] added.");
+	    
+	}
+	
+    }
+    
+    return @text;
+
+} # end sub parseProcs
+
+sub parseDisk {
+
+    my $client = shift;
+    my @text = @_;
+
+    my $name = $client->name() || confess "Cannot process disk definitions:  No client name found.";
+
+    $LOGGER->debug(1,"\t\tParsing disks for client [$name] ...");
+
+    while (my $line = shift @text) {
+	next if $line =~ /^\s*$/ or $line =~ /^\s*#/;
+		
+	if ($line =~ /^\s*(\w+)\s+([\w-]+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(info|crit|warn)\s+([\w\-\.]+)/) {
+
+	    my ($name,$event,$max,$location,$priority,$notification,$hosts) = 
+		($1,$2,$3,$4,$5,$6,$7);
+
+	    my $disk = {};
+
+	    $disk->{'name'} = $name;
+	    $disk->{'event'} = $event;
+	    $disk->{'max'} = $max;
+	    $disk->{'location'} = $location;
+	    $disk->{'priority'} = $priority;
+	    $disk->{'notification'} = $notification;
+	    $disk->{'hosts'} = $hosts;
+	    my $pool = new Net::Peep::Host::Pool;
+	    $pool->addHosts($disk->{'hosts'});
+	    $disk->{'pool'} = $pool;
+	    
+	    push @DISK, $disk;
+	    $LOGGER->debug(1,"\t\t\tClient disk [$name] added.");
+
+	}
+
+    }
+
+    return @text;
+
+} # end sub parseDisk
+
+__END__
+
+=head1 NAME
+
+Sysmonitor - Client application for Peep: The Network Auralizer.
+
+=head1 SYNOPSIS
+
+Sysmonitor is a client for Peep which monitors system performance
+statistics such as uptime, load, memory usage, etc. and translates
+them into a Peep "state".
+
+States are broadcast to the Peep server, peepd, which then translates
+the state into an aural signal such as running water or a chirping
+bird.
+
+This application is a part of Peep and requires that the Peep Perl
+modules have been installed.
+
+=head1 COMMAND-LINE OPTIONS
+
+sysmonitor supports the following command-line options:
+
+    --loadsound=[STRING]  
+    --usersound=[STRING]
+    --loadloc=[STRING]
+    --userloc=[STRING]
+    --maxload=[NUMBER]
+    --maxuser=[NUMBER]
+    --sleep=[NUMBER]      The amount of time to sleep (in seconds) between iterations
+                          of checking system functions
+
+In addition, the following options are common to all Peep clients:
+
+    --config=[PATH]       Path to the configuration file to use
+    --debug=[NUMBER]      Enable debugging. (Def:  0)
+    --nodaemon            Do not run in daemon mode
+    --pidfile=[PATH]      The file to write the pid out to (Def: /var/run/sysmonitor.pid)
+    --output=[PATH]       The file to log sysmonitor output to (Def: stderr)
+    --noautodiscovery     Disables autodiscovery and enables the server and port options
+    --server=[HOST]       The host (or IP address) to connect to
+    --port=[PORT NO]      The port to use
+    --protocol=[tcp|udp]  The protocol that will be used for client-server communication. 
+                          (Def: tcp)
+    --silent              Does not produce output.  To eliminate all output,
+                          either the debug option should be set to 0 or
+                          an output file should be specified.
+    --help                Prints a simple help message
+
+=head1 EXAMPLES
+
+sysmonitor
+
+sysmonitor --help
+
+sysmonitor --nodaemon --noautodiscovery --server=localhost --port=2001
+
+sysmonitor --nodaemon --config=$HOME/peep.conf --debug=9 
+
+=head1 AUTHOR
+
+Michael Gilfix <mgilfix@eecs.tufts.edu> Copyright (C) 2000
+
+Collin Starkweather <collin.starkweather@colorado.edu>
+
+=head1 SEE ALSO
+
+perl(1), peepd(1), Net::Peep::Client, Net::Peep::Client::Sysmonitor,
+peepd.
+
+http://peep.sourceforge.net
+
