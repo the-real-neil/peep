@@ -24,10 +24,7 @@ script:
   - cd $(mktemp -d)
   - autoreconf -ivf ${TRAVIS_BUILD_DIR}
   - ${TRAVIS_BUILD_DIR}/configure --prefix=$(mktemp -d)
-  - make
-  - make check
-  - make distcheck
-  - make install
+  - make clean all check distcheck install
 
 matrix:
   allow_failures:
