@@ -143,7 +143,7 @@ char *parserDirname (char *path);
 /* Add a directory to the import stack */
 int parserImportStackAdd (char *dir);
 
-/* Need these definitions for hte scandir function */
+/* Need these definitions for the scandir function */
 #include <sys/types.h>
 #include <dirent.h>
 
@@ -165,7 +165,7 @@ int parserGetFileSize (char *path);
 /* Loads the sound file found at "path" into memory and sets the array_size
  * pointer. Returns a pointer to an array of the short sound data array.
  */
-short *parserLoadSoundFile (unsigned int *array_size, char *path);
+short *parserLoadSoundFile (size_t *array_size, char *path);
 
 /* Parses the buffer pointed at by "remainder" and places the parsed
  * token into the "token" field. "Remainder" then points at the remaining

@@ -32,7 +32,7 @@ enum {
     DBG_QUE   = (1 << 12),   /* Queuing operations */
     DBG_PLBK  = (1 << 14),   /* Debugging about playback and recording */
 
-    DBG_ASSRT = (1 << 31),   /* Debug with assertions. */
+    DBG_ASSRT = (1 << 31)    /* Debug with assertions. */
 };
 
 /* Debugging level definitions */

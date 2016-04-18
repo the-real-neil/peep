@@ -683,7 +683,8 @@ int parserLoadEventSndDir (char *name, char *snd_path)
 
     char *path = NULL;
     short *sound = NULL;
-    int snd_cnt = 0, length = 0, index = 0;
+    int snd_cnt = 0, index = 0;
+    size_t length = 0;
     struct dirent **namelist = NULL;
     EVENT_ENTRY *entry = NULL;
 
@@ -994,7 +995,8 @@ int parserLoadStateSndDir (int thresh_cnt, double l_bound, double h_bound,
 {
 
     short *sound = NULL;
-    int snd_cnt = 0, length = 0, index = 0;
+    int snd_cnt = 0, index = 0;
+    size_t length = 0;
     struct dirent **namelist = NULL;
     char *path = NULL;
 
@@ -1193,7 +1195,7 @@ int parserGetFileSize (char *path)
 
 }
 
-short *parserLoadSoundFile (unsigned int *array_size, char *path)
+short *parserLoadSoundFile (size_t *array_size, char *path)
 {
 
     FILE *infile = NULL;
