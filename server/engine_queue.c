@@ -1,21 +1,22 @@
 /*
-PEEP: The Network Auralizer
-Copyright (C) 2000 Michael Gilfix
+  PEEP: The Network Auralizer
+  Copyright (C) 2000 Michael Gilfix
 
-This file is part of PEEP.
+  This file is part of PEEP.
 
-You should have received a file COPYING containing license terms
-along with this program; if not, write to Michael Gilfix
-(mgilfix@eecs.tufts.edu) for a copy.
+  You should have received a file COPYING containing license terms
+  along with this program; if not, write to Michael Gilfix
+  (mgilfix@eecs.tufts.edu) for a copy.
 
-This version of PEEP is open source; you can redistribute it and/or
-modify it under the terms listed in the file COPYING.
+  This version of PEEP is open source; you can redistribute it and/or
+  modify it under the terms listed in the file COPYING.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 
+#include <stdlib.h>
 #include "config.h"
 #include "engine_queue.h"
 #include "thread.h"
@@ -28,51 +29,55 @@ static sem_t *semaphore = NULL;
 int engineQueueInit (void)
 {
 
-	/* Initialize the queue's semaphore to blocking mode */
-	if ((semaphore = semaphoreCreate (0)) == NULL)
-		return 0;
-	else
-		return 1;
+    /* Initialize the queue's semaphore to blocking mode */
+    if ((semaphore = semaphoreCreate (0)) == NULL) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
 
 }
 
 void engineQueueDestroy (void)
 {
 
-	if (semaphore)
-		semaphoreDestroy (semaphore);
+    if (semaphore) {
+        semaphoreDestroy (semaphore);
+    }
 
 }
 
 void engineEnqueue (EVENT d)
 {
 
-	ENGINE_QUEUE_ELEMENT *cur_pos = head;
+    ENGINE_QUEUE_ELEMENT *cur_pos = head;
 
-	if (head == NULL) {
+    if (head == NULL) {
 
-		head = (ENGINE_QUEUE_ELEMENT *)malloc ( sizeof (ENGINE_QUEUE_ELEMENT) );
-		head->incoming_event = d;
-		head->next = head->prev = NULL;
-		tail = head;
+        head = malloc ( sizeof *head );
+        head->incoming_event = d;
+        head->next = head->prev = NULL;
+        tail = head;
 
-	}
-	else {
+    }
+    else {
 
-		/* Loop 'till we hit the end of the queue */
-		while (cur_pos->next != NULL)
-			cur_pos = cur_pos->next;
-
-		cur_pos->next = (ENGINE_QUEUE_ELEMENT *)malloc ( sizeof (ENGINE_QUEUE_ELEMENT) );
-		cur_pos->next->incoming_event = d;
-		cur_pos->next->next = NULL;
-		cur_pos->next->prev = cur_pos;
-		tail = cur_pos->next;
-
+        /* Loop 'till we hit the end of the queue */
+        while (cur_pos->next != NULL) {
+            cur_pos = cur_pos->next;
 	}
 
-	/* Increment the semaphore */
-	semaphoreRelease (semaphore);
+        cur_pos->next = malloc ( sizeof *(cur_pos->next) );
+        cur_pos->next->incoming_event = d;
+        cur_pos->next->next = NULL;
+        cur_pos->next->prev = cur_pos;
+        tail = cur_pos->next;
+
+    }
+
+    /* Increment the semaphore */
+    semaphoreRelease (semaphore);
 
 
 }
@@ -80,34 +85,34 @@ void engineEnqueue (EVENT d)
 EVENT engineDequeue (void)
 {
 
-	EVENT temp;
+    EVENT temp;
 
-	/* Acquire the semaphore, which means there's something in the queue */
-	semaphoreAcquire (semaphore, 1);
+    /* Acquire the semaphore, which means there's something in the queue */
+    semaphoreAcquire (semaphore, 1);
 
-	temp = tail->incoming_event;
+    temp = tail->incoming_event;
 
-	if (tail->prev != NULL) {
+    if (tail->prev != NULL) {
 
-		tail = tail->prev;
-		free (tail->next);
-		tail->next = NULL;
+        tail = tail->prev;
+        free (tail->next);
+        tail->next = NULL;
 
-	}
-	else {
+    }
+    else {
 
-		free (tail);
-		tail = head = NULL;
+        free (tail);
+        tail = head = NULL;
 
-	}
+    }
 
-	return temp;
+    return temp;
 
 }
 
 int engineQueueEmpty (void)
 {
 
-	return (head == NULL);
+    return (head == NULL);
 
 }

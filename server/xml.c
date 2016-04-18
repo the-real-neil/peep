@@ -1,19 +1,19 @@
 /*
-PEEP: The Network Auralizer
-Copyright (C) 2000 Michael Gilfix
+  PEEP: The Network Auralizer
+  Copyright (C) 2000 Michael Gilfix
 
-This file is part of PEEP.
+  This file is part of PEEP.
 
-You should have received a file COPYING containing license terms
-along with this program; if not, write to Michael Gilfix
-(mgilfix@eecs.tufts.edu) for a copy.
+  You should have received a file COPYING containing license terms
+  along with this program; if not, write to Michael Gilfix
+  (mgilfix@eecs.tufts.edu) for a copy.
 
-This version of PEEP is open source; you can redistribute it and/or
-modify it under the terms listed in the file COPYING.
+  This version of PEEP is open source; you can redistribute it and/or
+  modify it under the terms listed in the file COPYING.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #include <stdlib.h>
@@ -22,57 +22,59 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 char *createXmlNormalizedString (char *s, int len)
 {
 
-	char *str = (char *)malloc (len + 1);
-	int i, j;
+    char *str = malloc (len + 1);
+    int i, j;
 
-	for (i = 0, j = 0; i < len; i++) {
+    for (i = 0, j = 0; i < len; i++) {
 
-		switch (s[i]) {
+        switch (s[i]) {
 
-		case '\n':
-		case '\t':
+        case '\n':
+        case '\t':
 
-			continue;
+            continue;
 
-		case ' ':
+        case ' ':
 
-			if (isalnum (s[i + 1])) {
+            if (isalnum (s[i + 1])) {
 
-				str[j++] = ' ';
-				str[j++] = s[i + 1];
-				i += 2;
+                str[j++] = ' ';
+                str[j++] = s[i + 1];
+                i += 2;
 
-			}
-			else
-				continue;
+            }
+            else {
+                continue;
+	    }
 
-		default:
+        default:
 
-			str[j++] = s[i];
-			break;
+            str[j++] = s[i];
+            break;
 
-		}
+        }
 
-	}
+    }
 
-	str[j] = '\0';
+    str[j] = '\0';
 
-	/* Check if string is empty */
-	if (str[0] == '\0') {
+    /* Check if string is empty */
+    if (str[0] == '\0') {
 
-		free (str);
-		return NULL;
+        free (str);
+        return NULL;
 
-	}
-	else
-		return str;
+    }
+    else {
+        return str;
+    }
 
 }
 
 void freeXmlNormalizedString (char *s)
 {
 
-	free (s);
+    free (s);
 
 }
 

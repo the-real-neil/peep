@@ -43,7 +43,7 @@ struct tok {
 
 #define PARSER_BUFFER_LEN 1024
 #define PARSER_COMMENT '#'
-#define PARSER_PATH_SEP '/'
+static const char PARSER_PATH_SEP = '/';
 
 /* Parser tokens */
 #define PARSER_END_TOKEN "end"

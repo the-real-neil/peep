@@ -1,19 +1,19 @@
 /*
-PEEP: The Network Auralizer
-Copyright (C) 2000 Michael Gilfix
+  PEEP: The Network Auralizer
+  Copyright (C) 2000 Michael Gilfix
 
-This file is part of PEEP.
+  This file is part of PEEP.
 
-You should have received a file COPYING containing license terms
-along with this program; if not, write to Michael Gilfix
-(mgilfix@eecs.tufts.edu) for a copy.
+  You should have received a file COPYING containing license terms
+  along with this program; if not, write to Michael Gilfix
+  (mgilfix@eecs.tufts.edu) for a copy.
 
-This version of PEEP is open source; you can redistribute it and/or
-modify it under the terms listed in the file COPYING.
+  This version of PEEP is open source; you can redistribute it and/or
+  modify it under the terms listed in the file COPYING.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 */
 
 #include "config.h"
@@ -38,22 +38,23 @@ extern int errno;
 void *soundInit (void *snd_device, int mode)
 {
 
-	char *dev = (char *)snd_device;
-	static int audio_fd = 0;
+    char *dev = (char *)snd_device;
+    static int audio_fd = 0;
 
-	/* Sanity check */
-	if (snd_device == NULL)
-		return NULL;
+    /* Sanity check */
+    if (snd_device == NULL) {
+        return NULL;
+    }
 
-	if ((audio_fd = open (dev, mode, O_NONBLOCK)) == -1) {
+    if ((audio_fd = open (dev, mode, O_NONBLOCK)) == -1) {
 
-		/* Tell the world that opening the device failed */
-		log (DBG_GEN, "Couldn't open the sound device: %s\n", strerror (errno));
-		shutDown ();
+        /* Tell the world that opening the device failed */
+        logMsg (DBG_GEN, "Couldn't open the sound device: %s\n", strerror (errno));
+        shutDown ();
 
-	}
+    }
 
-	return &audio_fd;
+    return &audio_fd;
 
 }
 
@@ -65,60 +66,60 @@ void *soundInit (void *snd_device, int mode)
  * Returns true is success, false otherwise
  */
 int soundSetFormat (void *handle, unsigned int format_type,
-					unsigned int rate, unsigned int chans,
-					unsigned int port)
+                    unsigned int rate, unsigned int chans,
+                    unsigned int port)
 {
 
 #if defined (__LINUX__) || defined (__BSD__)
 
-	/* Set sound format */
-	if (ioctl (*(int *)handle, SNDCTL_DSP_SETFMT, &format_type) == -1) {
+    /* Set sound format */
+    if (ioctl (*(int *)handle, SNDCTL_DSP_SETFMT, &format_type) == -1) {
 
-		log (DBG_GEN, "Couldn't set sound format: %s\n", strerror (errno));
-		return 0;
+        logMsg (DBG_GEN, "Couldn't set sound format: %s\n", strerror (errno));
+        return 0;
 
-	}
+    }
 
-	/* Select the number of channels */
-	if (ioctl (*(int *)handle, SNDCTL_DSP_CHANNELS, &chans) == -1) {
+    /* Select the number of channels */
+    if (ioctl (*(int *)handle, SNDCTL_DSP_CHANNELS, &chans) == -1) {
 
-		log (DBG_GEN, "Couldn't set the number of sound channels: %s\n", strerror (errno));
-		return 0;
+        logMsg (DBG_GEN, "Couldn't set the number of sound channels: %s\n", strerror (errno));
+        return 0;
 
-	}
+    }
 
-	/* Set the sample rate */
-	if (ioctl (*(int *)handle, SNDCTL_DSP_SPEED, &rate) == -1) {
+    /* Set the sample rate */
+    if (ioctl (*(int *)handle, SNDCTL_DSP_SPEED, &rate) == -1) {
 
-		log (DBG_GEN, "Couldn't set the sample rate: %s\n", strerror (errno));
-		return 0;
+        logMsg (DBG_GEN, "Couldn't set the sample rate: %s\n", strerror (errno));
+        return 0;
 
-	}
+    }
 
 #endif
 
 #ifdef __SOLARIS__
 
-	audio_info_t info;
+    audio_info_t info;
 
-	AUDIO_INITINFO (&info);
+    AUDIO_INITINFO (&info);
 
-	info.play.encoding = format_type;
-	info.play.channels = chans;
-	info.play.sample_rate = rate;
-	info.play.port = port; /* 1 = speaker, 2 = jack */
+    info.play.encoding = format_type;
+    info.play.channels = chans;
+    info.play.sample_rate = rate;
+    info.play.port = port; /* 1 = speaker, 2 = jack */
 
-	if (ioctl (*(int *)handle, AUDIO_SETINFO, &info) == -1) {
+    if (ioctl (*(int *)handle, AUDIO_SETINFO, &info) == -1) {
 
-		log (DBG_GEN, "Couldn't set audio formatting: %s\n", strerror (errno));
-		return 0;
+        logMsg (DBG_GEN, "Couldn't set audio formatting: %s\n", strerror (errno));
+        return 0;
 
-	}
+    }
 
 #endif
 
-	/* Set the format with no error */
-	return 1;
+    /* Set the format with no error */
+    return 1;
 
 }
 
@@ -128,10 +129,10 @@ int soundSetFormat (void *handle, unsigned int format_type,
 SNDCARD_INFO *soundGetInfo (void *handle)
 {
 
-	/* Currently unimplemented. Not sure if this is possible with
-	 * a device driver
-	 */
-	return NULL;
+    /* Currently unimplemented. Not sure if this is possible with
+     * a device driver
+     */
+    return NULL;
 
 }
 
@@ -142,10 +143,10 @@ SNDCARD_INFO *soundGetInfo (void *handle)
 SND_STATUS *soundGetStatus (void *handle)
 {
 
-	/* Currently unimplemented. Not sure if this is possible with
-	 * a device driver.
-	 */
-	return NULL;
+    /* Currently unimplemented. Not sure if this is possible with
+     * a device driver.
+     */
+    return NULL;
 
 }
 
@@ -156,7 +157,7 @@ SND_STATUS *soundGetStatus (void *handle)
 ssize_t soundPlayChunk (void *handle, char *buf, unsigned int len)
 {
 
-	return write (*(int *)handle, buf, len);
+    return write (*(int *)handle, buf, len);
 
 }
 
@@ -164,7 +165,7 @@ ssize_t soundPlayChunk (void *handle, char *buf, unsigned int len)
 void soundClose (void *handle)
 {
 
-	close (*(int *)handle);
+    close (*(int *)handle);
 
 }
 
