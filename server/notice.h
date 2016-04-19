@@ -21,30 +21,30 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 /* For time definitions for notice data structures */
 #if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
+  #include <sys/time.h>
+  #include <time.h>
 #else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
+  #if HAVE_SYS_TIME_H
+    #include <sys/time.h>
+  #else
+    #include <time.h>
+  #endif
 #endif
 #include <unistd.h>
 
 typedef struct {
-	char *host;
-	char *client;
-	char *sound;
-	char *data;
-	int type;
-	int location;
-	int priority;
-	int volume;
-	int dither;
-	int metric;
-	int flags;
-	struct tm date;
+  char *host;
+  char *client;
+  char *sound;
+  char *data;
+  int type;
+  int location;
+  int priority;
+  int volume;
+  int dither;
+  int metric;
+  int flags;
+  struct tm date;
 } NOTICE;
 
 #define NOTICE_INTEGER_NOT_SET -1

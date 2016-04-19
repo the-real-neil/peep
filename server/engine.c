@@ -43,262 +43,270 @@ void engineInit (char *device, unsigned int snd_port,
                  unsigned int countEbuf, unsigned int countSbuf)
 {
 
-    no_ebuffs = countEbuf;
-    no_sbuffs = countSbuf;
+  no_ebuffs = countEbuf;
+  no_sbuffs = countSbuf;
 
-    /* Start the mixer */
-    mixerInit (device, snd_port, countEbuf, countSbuf);
+  /* Start the mixer */
+  mixerInit (device, snd_port, countEbuf, countSbuf);
 
-    /* Initialize the internal scheduler */
-    sched = calloc (countEbuf, sizeof *sched);
+  /* Initialize the internal scheduler */
+  sched = calloc (countEbuf, sizeof *sched);
 
-    /* Initialize the sound table */
-    engineInitSoundTable ();
+  /* Initialize the sound table */
+  engineInitSoundTable ();
 
-    /* Initialize the queue interfacing to the engine */
-    engineQueueInit ();
+  /* Initialize the queue interfacing to the engine */
+  engineQueueInit ();
 
-    /* Initialize the heap to the default queue entries */
-    mixerQueueInit (EVENT_QUEUE_ENTRIES);
+  /* Initialize the heap to the default queue entries */
+  mixerQueueInit (EVENT_QUEUE_ENTRIES);
 
-    /* Init the mutex lock */
-    pthread_mutex_init (&tlock, NULL);
+  /* Init the mutex lock */
+  pthread_mutex_init (&tlock, NULL);
 
 }
 
 int engineInitSoundTable (void)
 {
 
-    sound_table = calloc (HASHES, sizeof *sound_table);
+  sound_table = calloc (HASHES, sizeof *sound_table);
 
-    if (sound_table == NULL) {
-        return ENGINE_ALLOC_FAILED;
-    }
+  if (sound_table == NULL) {
+    return ENGINE_ALLOC_FAILED;
+  }
 
-    return ENGINE_SUCCESS;
+  return ENGINE_SUCCESS;
 
 }
 
 int engineSoundTableInsertEvent (char *name, EVENT_ENTRY *event)
 {
 
-    struct sound_entry *entry = calloc (1, sizeof *entry);
+  struct sound_entry *entry = calloc (1, sizeof *entry);
 
-    if (entry) {
-        entry->name = malloc (strlen(name) + 1);
-        strcpy (entry->name, name);
-        entry->type = EVENT_T;
-        entry->data = (void *)event;
-    }
+  if (entry) {
+    entry->name = malloc (strlen(name) + 1);
+    strcpy (entry->name, name);
+    entry->type = EVENT_T;
+    entry->data = (void *)event;
+  }
 
-    return engineSoundTableInsert (entry);
+  return engineSoundTableInsert (entry);
 
 }
 
 int engineSoundTableInsertState (char *name, STATE_ENTRY *state)
 {
 
-    struct sound_entry *entry = calloc (1, sizeof *entry);
+  struct sound_entry *entry = calloc (1, sizeof *entry);
 
-    if (entry) {
-        entry->name = malloc (strlen(name) + 1);
-        strcpy (entry->name, name);
-        entry->type = STATE_T;
-        entry->data = (void *)state;
-    }
+  if (entry) {
+    entry->name = malloc (strlen(name) + 1);
+    strcpy (entry->name, name);
+    entry->type = STATE_T;
+    entry->data = (void *)state;
+  }
 
-    return engineSoundTableInsert (entry);
+  return engineSoundTableInsert (entry);
 
 }
 
 int engineSoundTableInsert (struct sound_entry *entry)
 {
 
-    int index = engineSoundHash (entry->name);
-    struct sound_entry *p = NULL;
+  int index = engineSoundHash (entry->name);
+  struct sound_entry *p = NULL;
 
-    if (sound_table[index] == NULL)
-        sound_table[index] = entry;
-    else {
+  if (sound_table[index] == NULL) {
+    sound_table[index] = entry;
+  } else {
 
-        for (p = sound_table[index]; p->next; p = p->next) {
+    for (p = sound_table[index]; p->next; p = p->next) {
 
-            /* Check if a sound of the same name is already in the table */
-            if (!strcasecmp (p->name, entry->name))
-                return ENGINE_SOUND_EXISTS;
-
-        }
-
-        p->next = entry;
+      /* Check if a sound of the same name is already in the table */
+      if (!strcasecmp (p->name, entry->name)) {
+        return ENGINE_SOUND_EXISTS;
+      }
 
     }
 
-    return ENGINE_SUCCESS;
+    p->next = entry;
+
+  }
+
+  return ENGINE_SUCCESS;
 
 }
 
 void *engineSoundTableRetrieve (char *name)
 {
 
-    int index = engineSoundHash (name);
-    struct sound_entry *p = NULL;
+  int index = engineSoundHash (name);
+  struct sound_entry *p = NULL;
 
-    for (p = sound_table[index]; p; p ->next) {
+  for (p = sound_table[index]; p; p ->next) {
 
-        if (!strcasecmp (p->name, name))
-            return p;
-
+    if (!strcasecmp (p->name, name)) {
+      return p;
     }
 
-    return NULL;
+  }
+
+  return NULL;
 
 }
 
 void *engineSoundTableDataRetrieve (char *name)
 {
 
-    struct sound_entry *p = engineSoundTableRetrieve (name);
+  struct sound_entry *p = engineSoundTableRetrieve (name);
 
-    if (p == NULL)
-        return NULL;
+  if (p == NULL) {
+    return NULL;
+  }
 
-    return p->data;
+  return p->data;
 
 }
 
 void engineSoundTableDestroy (void)
 {
 
-    int i = 0, j = 0;
-    struct sound_entry *p = NULL, *q = NULL;
+  int i = 0, j = 0;
+  struct sound_entry *p = NULL, *q = NULL;
 
 
-    if (sound_table != NULL) {
+  if (sound_table != NULL) {
 
-        for (i = 0; i < HASHES; i++) {
+    for (i = 0; i < HASHES; i++) {
 
-            if (sound_table[i] != NULL) {
+      if (sound_table[i] != NULL) {
 
-                p = sound_table[i];
+        p = sound_table[i];
 
-                while (p) {
+        while (p) {
 
-                    q = p->next;
+          q = p->next;
 
-                    /* Free the data if it's an event */
-                    if (p->type == EVENT_T) {
+          /* Free the data if it's an event */
+          if (p->type == EVENT_T) {
 
-                        for (j = 0; j < ((EVENT_ENTRY *)p->data)->snd_cnt; j++)
-                            free (((EVENT_ENTRY *)p->data)->snds[j]);
-
-                        free (((EVENT_ENTRY *)p->data)->snds);
-                        free (((EVENT_ENTRY *)p->data)->lens);
-
-                    }
-
-                    free (p->name);
-                    free (p->data);
-                    free (p);
-                    p = q;
-
-                }
-
+            for (j = 0; j < ((EVENT_ENTRY *)p->data)->snd_cnt; j++) {
+              free (((EVENT_ENTRY *)p->data)->snds[j]);
             }
+
+            free (((EVENT_ENTRY *)p->data)->snds);
+            free (((EVENT_ENTRY *)p->data)->lens);
+
+          }
+
+          free (p->name);
+          free (p->data);
+          free (p);
+          p = q;
 
         }
 
-        free (sound_table);
-        sound_table = NULL;
+      }
 
     }
+
+    free (sound_table);
+    sound_table = NULL;
+
+  }
 
 }
 
 int engineSoundHash (char *name)
 {
 
-    int count = 0;
-    char *p = NULL;
+  int count = 0;
+  char *p = NULL;
 
-    for (p = name; *p; p++)
-        count += *p;
+  for (p = name; *p; p++) {
+    count += *p;
+  }
 
-    return (count % HASHES);
+  return (count % HASHES);
 
 }
 
 int engineSchedulerInit (int index, double start, long prior, double minendt)
 {
 
-    threadLock (&tlock);
+  threadLock (&tlock);
 
-    if (sched == NULL)
-        return ENGINE_NOT_YET_ALLOC;
+  if (sched == NULL) {
+    return ENGINE_NOT_YET_ALLOC;
+  }
 
-    sched[index].startt = start;
-    sched[index].priorit = prior;
-    sched[index].minendt = minendt;
+  sched[index].startt = start;
+  sched[index].priorit = prior;
+  sched[index].minendt = minendt;
 
-    threadUnlock (&tlock);
+  threadUnlock (&tlock);
 
-    return ENGINE_SUCCESS;
+  return ENGINE_SUCCESS;
 
 }
 
 int engineGetNoEventSnds (char *sound)
 {
 
-    struct sound_entry *entry = engineSoundTableRetrieve (sound);
-    EVENT_ENTRY *e = NULL;
+  struct sound_entry *entry = engineSoundTableRetrieve (sound);
+  EVENT_ENTRY *e = NULL;
 
-    if (entry == NULL || entry->type != EVENT_T)
-        return ENGINE_SOUND_NOT_FOUND;
+  if (entry == NULL || entry->type != EVENT_T) {
+    return ENGINE_SOUND_NOT_FOUND;
+  }
 
-    e = (EVENT_ENTRY *)entry->data;
-    return e->snd_cnt;
+  e = (EVENT_ENTRY *)entry->data;
+  return e->snd_cnt;
 
 }
 
 int engineSetNoEventSnds (char *sound, unsigned int value)
 {
 
-    struct sound_entry *entry = NULL;
-    EVENT_ENTRY *e = NULL;
+  struct sound_entry *entry = NULL;
+  EVENT_ENTRY *e = NULL;
 
-    if (sound_table == NULL)
-        return ENGINE_NOT_YET_ALLOC;
+  if (sound_table == NULL) {
+    return ENGINE_NOT_YET_ALLOC;
+  }
 
-    entry = engineSoundTableRetrieve (sound);
+  entry = engineSoundTableRetrieve (sound);
 
-    if (entry == NULL || entry->type != EVENT_T);
-    return ENGINE_SOUND_NOT_FOUND;
+  if (entry == NULL || entry->type != EVENT_T);
+  return ENGINE_SOUND_NOT_FOUND;
 
-    e = (EVENT_ENTRY *)entry->data;
-    e->snd_cnt = value;
-    return ENGINE_SUCCESS;
+  e = (EVENT_ENTRY *)entry->data;
+  e->snd_cnt = value;
+  return ENGINE_SUCCESS;
 
 }
 
 EVENT_ENTRY *engineAllocEventEntry (int no_events)
 {
 
-    EVENT_ENTRY *entry = calloc (1, sizeof *entry);
+  EVENT_ENTRY *entry = calloc (1, sizeof *entry);
 
-    if (entry != NULL) {
+  if (entry != NULL) {
 
-        entry->snds = calloc (no_events, sizeof *(entry->snds));
-        entry->lens = calloc (no_events, sizeof *(entry->lens));
-        entry->snd_cnt = no_events;
-    }
+    entry->snds = calloc (no_events, sizeof *(entry->snds));
+    entry->lens = calloc (no_events, sizeof *(entry->lens));
+    entry->snd_cnt = no_events;
+  }
 
-    return entry;
+  return entry;
 
 }
 
 void engineFreeEventEntry (EVENT_ENTRY *entry)
 {
 
-    free (entry);
+  free (entry);
 
 }
 
@@ -306,339 +314,341 @@ int engineEventEntryAssignSnd (EVENT_ENTRY *entry, int event_no,
                                short *sound, unsigned int len)
 {
 
-    if (entry == NULL) {
-        return ENGINE_NOT_YET_ALLOC;
-    }
+  if (entry == NULL) {
+    return ENGINE_NOT_YET_ALLOC;
+  }
 
-    entry->snds[event_no] = sound;
-    entry->lens[event_no] = len;
+  entry->snds[event_no] = sound;
+  entry->lens[event_no] = len;
 
-    return ENGINE_SUCCESS;
+  return ENGINE_SUCCESS;
 
 }
 
 short *engineGetEventSnd (char *name, int num)
 {
 
-    struct sound_entry *entry = engineSoundTableRetrieve (name);
-    EVENT_ENTRY *e = NULL;
+  struct sound_entry *entry = engineSoundTableRetrieve (name);
+  EVENT_ENTRY *e = NULL;
 
-    if (entry == NULL)
-        return NULL;
-    else {
+  if (entry == NULL) {
+    return NULL;
+  } else {
 
-        e = (EVENT_ENTRY *)entry->data;
-        return e->snds[num];
+    e = (EVENT_ENTRY *)entry->data;
+    return e->snds[num];
 
-    }
+  }
 
 }
 
 unsigned int engineGetEventSndLen (char *name, int num)
 {
 
-    struct sound_entry *entry = engineSoundTableRetrieve (name);
-    EVENT_ENTRY *e = NULL;
+  struct sound_entry *entry = engineSoundTableRetrieve (name);
+  EVENT_ENTRY *e = NULL;
 
-    if (entry == NULL)
-        return 0;
-    else {
+  if (entry == NULL) {
+    return 0;
+  } else {
 
-        e = (EVENT_ENTRY *)entry->data;
-        return e->lens[num];
+    e = (EVENT_ENTRY *)entry->data;
+    return e->lens[num];
 
-    }
+  }
 
 }
 
 STATE_ENTRY *engineAllocStateEntry (int index)
 {
 
-    STATE_ENTRY *entry = calloc (1, sizeof *entry);
+  STATE_ENTRY *entry = calloc (1, sizeof *entry);
 
-    if (entry != NULL)
-        entry->mixer_index = index;
+  if (entry != NULL) {
+    entry->mixer_index = index;
+  }
 
-    return entry;
+  return entry;
 
 }
 
 void engineFreeStateEntry (STATE_ENTRY *entry)
 {
 
-    free (entry);
+  free (entry);
 
 }
 
 ENGINE_EVENT *engineEngineEventCreate (void)
 {
 
-    return calloc (1, sizeof (ENGINE_EVENT));
+  return calloc (1, sizeof (ENGINE_EVENT));
 
 }
 
 void engineEngineEventFree (ENGINE_EVENT *event)
 {
 
-    free (event);
+  free (event);
 
 }
 
 void engineIO (EVENT *incoming_event)
 {
 
-    static int lastc = 0;  /* keep track of which channel we were looking at last */
-    int next_snd;          /* next event to be chosen at random */
-    int c = 0, bestc, ind; /* counters for the event algorithm */
-    struct timeval tp;     /* for gettimeofday call */
-    ENGINE_EVENT *engine_event = NULL; /* Wrapper for holding events for various
+  static int lastc = 0;  /* keep track of which channel we were looking at last */
+  int next_snd;          /* next event to be chosen at random */
+  int c = 0, bestc, ind; /* counters for the event algorithm */
+  struct timeval tp;     /* for gettimeofday call */
+  ENGINE_EVENT *engine_event = NULL; /* Wrapper for holding events for various
                                         * data structures */
 
 
-    /* Check if playback is active and whether we should record the event */
-    if (playbackModeOn (NULL) && playbackSetMode (NULL) == RECORD_MODE) {
+  /* Check if playback is active and whether we should record the event */
+  if (playbackModeOn (NULL) && playbackSetMode (NULL) == RECORD_MODE) {
 
-        engine_event = engineEngineEventCreate ();
-        engine_event->event = *incoming_event;
+    engine_event = engineEngineEventCreate ();
+    engine_event->event = *incoming_event;
 
-        if (! playbackRecordEvent (*engine_event)) {
+    if (! playbackRecordEvent (*engine_event)) {
 
-            logMsg (DBG_GEN, "WARNING: Error recording an event. Event not recorded.\n");
-            /* continue anyway */
-
-        }
-
-        engineEngineEventFree (engine_event);
+      logMsg (DBG_GEN, "WARNING: Error recording an event. Event not recorded.\n");
+      /* continue anyway */
 
     }
 
-    if (incoming_event->type == EVENT_T) {
+    engineEngineEventFree (engine_event);
 
-        EVENT_ENTRY *entry = NULL;
+  }
 
-        /* When an event comes in:
-         *   -try to pick a channel c that's idle
-         *   -otherwise, interrupt lowest priority snd
-         * Note that distance here is:
-         *   TP_IN_FP_SECS(tp)-startt[c]
-         */
+  if (incoming_event->type == EVENT_T) {
 
-        /* if after bestc == -1, we need temporal queuing */
-        bestc = -1;
+    EVENT_ENTRY *entry = NULL;
 
-        for (ind = 0; ind < no_ebuffs; ind++) {
+    /* When an event comes in:
+     *   -try to pick a channel c that's idle
+     *   -otherwise, interrupt lowest priority snd
+     * Note that distance here is:
+     *   TP_IN_FP_SECS(tp)-startt[c]
+     */
 
-            /* Round Robin starting at last c */
-            c = (lastc + ind) % no_ebuffs;
+    /* if after bestc == -1, we need temporal queuing */
+    bestc = -1;
 
-            ASSERT (ind >= 0 && ind < no_ebuffs)
-                ASSERT (c >= 0 && c < no_ebuffs)
+    for (ind = 0; ind < no_ebuffs; ind++) {
 
-                /* Can we get a channel right away */
-                if (sched[c].startt == 0) {
+      /* Round Robin starting at last c */
+      c = (lastc + ind) % no_ebuffs;
 
-#if DEBUG_LEVEL & DBG_ENG
-                    logMsg (DBG_ENG, "We found a channel right away: %d\n", c);
-#endif
+      ASSERT (ind >= 0 && ind < no_ebuffs)
+      ASSERT (c >= 0 && c < no_ebuffs)
 
-                    bestc = c;
-                    break;
-
-                }
-
-            /* Now choose the sound with the lowest priority */
-            gettimeofday (&tp, NULL);
-
-            if (bestc == 0 && (sched[bestc].priorit < sched[c].priorit)) {
-
-                ASSERT (sched[c].priorit >= 0 && sched[bestc].priorit >= 0)
+      /* Can we get a channel right away */
+      if (sched[c].startt == 0) {
 
 #if DEBUG_LEVEL & DBG_ENG
-                    logMsg (DBG_ENG, "Event with a higher priority than channel: %d or c = 0\n", c);
+        logMsg (DBG_ENG, "We found a channel right away: %d\n", c);
 #endif
 
-                bestc = c;
-                continue;
+        bestc = c;
+        break;
 
-            }
+      }
 
-            if (bestc == 0
-                && (sched[bestc].priorit == sched[c].priorit
-                    &&  sched[bestc].startt > sched[c].startt)) {
+      /* Now choose the sound with the lowest priority */
+      gettimeofday (&tp, NULL);
 
-                ASSERT (sched[c].priorit >= 0 && sched[bestc].startt >= 0 && sched[c].startt >= 0)
+      if (bestc == 0 && (sched[bestc].priorit < sched[c].priorit)) {
+
+        ASSERT (sched[c].priorit >= 0 && sched[bestc].priorit >= 0)
 
 #if DEBUG_LEVEL & DBG_ENG
-                    logMsg (DBG_ENG, "Hit a minimal start time for channel: %d\n", c);
+        logMsg (DBG_ENG, "Event with a higher priority than channel: %d or c = 0\n", c);
 #endif
 
-                bestc = c;
-                continue;
+        bestc = c;
+        continue;
 
-            }
+      }
 
-        }
+      if (bestc == 0
+          && (sched[bestc].priorit == sched[c].priorit
+              &&  sched[bestc].startt > sched[c].startt)) {
 
-        /* At this point, bestc is either a blank channel or the lowest priority
-         * one that started earliest. If bestc == -1, then we don't have a channel
-         * yet and should put it into the temporal priority queue.
-         */
-        if (bestc == -1) {
+        ASSERT (sched[c].priorit >= 0 && sched[bestc].startt >= 0
+                && sched[c].startt >= 0)
 
-            /* If the queue if full, discard the event anyway */
-            if (mixerQueueFull ()) {
+#if DEBUG_LEVEL & DBG_ENG
+        logMsg (DBG_ENG, "Hit a minimal start time for channel: %d\n", c);
+#endif
+
+        bestc = c;
+        continue;
+
+      }
+
+    }
+
+    /* At this point, bestc is either a blank channel or the lowest priority
+     * one that started earliest. If bestc == -1, then we don't have a channel
+     * yet and should put it into the temporal priority queue.
+     */
+    if (bestc == -1) {
+
+      /* If the queue if full, discard the event anyway */
+      if (mixerQueueFull ()) {
 
 #if DEBUG_LEVEL & DBG_QUE
-                logMsg (DBG_QUE, "Heap was full. Event discarded...\n");
+        logMsg (DBG_QUE, "Heap was full. Event discarded...\n");
 #endif
 
-                return;
+        return;
 
-            }
+      }
 
-            engine_event = engineEngineEventCreate ();
+      engine_event = engineEngineEventCreate ();
 
-            engine_event->event = *incoming_event;
-            gettimeofday (&tp, NULL);
-            engine_event->mix_time = tp;
+      engine_event->event = *incoming_event;
+      gettimeofday (&tp, NULL);
+      engine_event->mix_time = tp;
 
-            mixerEnqueue (engine_event);
+      mixerEnqueue (engine_event);
 
-            return;
+      return;
 
-        }
-        else {
+    } else {
 
-            /* Make sure that lastc gets assigned to the next one to start
-             * search at
-             */
-            lastc = (bestc + 1) % no_ebuffs;
-
-        }
-
-        /* Interrupt the channel if playing */
-        if (sched[bestc].startt != 0) {
-
-            mixerInterrupt (bestc);
-
-            ASSERT (bestc >= 0)
-
-#if DEBUG_LEVEL & DBG_ENG
-                logMsg (DBG_ENG, "Interrupted channel: %d\n", bestc);
-#endif
-
-        }
-
-        /* Pick a new random event sound and add it into the mixer */
-#if DEBUG_LEVEL & DBG_ENG
-        logMsg (DBG_ENG, "Mixing in sound on channel: %d\n", bestc);
-#endif
-
-        /* Retrieve the event entry from the sound table */
-        entry = engineSoundTableDataRetrieve (incoming_event->sound);
-
-        next_snd = (int)((double)entry->snd_cnt * rand () / (RAND_MAX + 1.0));
-        mixerAddEvent (entry->snds[next_snd],
-                       entry->lens[next_snd],
-                       (double)incoming_event->loc / 255.0,
-                       incoming_event->flags,
-                       bestc);
-
-        /* Update sound data structures */
-        gettimeofday (&tp, NULL);
-
-        threadLock (&tlock);
-
-        ASSERT (bestc >= 0 && bestc < no_ebuffs)
-
-            sched[bestc].startt = TP_IN_FP_SECS (tp);
-        sched[bestc].priorit = incoming_event->prior;
-
-#if DEBUG_LEVEL & DBG_ENG
-        logMsg (DBG_ENG, "Assigned to startt for bestc: %lf on channel: %d\n",
-                sched[bestc].startt, bestc);
-        logMsg (DBG_ENG, "\n");
-#endif
-
-        threadUnlock (&tlock);
+      /* Make sure that lastc gets assigned to the next one to start
+       * search at
+       */
+      lastc = (bestc + 1) % no_ebuffs;
 
     }
-    else if (incoming_event->type == STATE_T) {
 
-        STATE_ENTRY *entry = engineSoundTableDataRetrieve (incoming_event->sound);
+    /* Interrupt the channel if playing */
+    if (sched[bestc].startt != 0) {
 
-        /* Process a state sound. The mapping number corresponds directly to
-         * the number of event channels. This is checked when loading so we
-         * can do this: (Volumes must also be between 0.0 and 1.0 and double)
-         *
-         * Note that a dither of 255 (which should be default for the sender)
-         * does not change the fade time for the state. This means we can set
-         * at max a parameter of 254, which is never exactly the max fade
-         * time possible. Big deal.
-         */
-        double fade = mixerGetFadeTime (entry->mixer_index);
+      mixerInterrupt (bestc);
 
-        if (incoming_event->dither != 255) {
-
-            fade = (double)incoming_event->dither / (255.0 / MAX_FADE_TIME);
-            mixerSetFadeTime (entry->mixer_index, fade);
+      ASSERT (bestc >= 0)
 
 #if DEBUG_LEVEL & DBG_ENG
-            logMsg (DBG_ENG, "Set fade time for sound [%s] to [%lf].\n", incoming_event->sound, fade);
-#endif
-
-        }
-        else {
-
-#if DEBUG_LEVEL & DBG_ENG
-            logMsg (DBG_ENG, "Fade value for packet was 255. Using old value: [%lf].\n", fade);
-#endif
-
-        }
-
-        /* Tell the mixer about the new event info */
-        mixerSetStateSnd (entry->mixer_index,
-                          (double)incoming_event->vol / 255.0,
-                          (double)incoming_event->loc / 255.0,
-                          incoming_event->flags);
-
-#if DEBUG_LEVEL & DBG_ENG
-        logMsg (DBG_ENG, "Set volume for state [%s] to [%lf].\n", incoming_event->sound, (double)incoming_event->vol / 255.0);
-#endif
-
-    }
-    else {
-
-#if DEBUG_LEVEL & DBG_ENG
-        logMsg (DBG_ENG, "Received event of an unsupported type. Discarding...\n");
+      logMsg (DBG_ENG, "Interrupted channel: %d\n", bestc);
 #endif
 
     }
 
-    /* Free the sound string part of the event here.
-     * This needs to be free'd here since we might be queuing the
-     * event and need to keep the sound string around
+    /* Pick a new random event sound and add it into the mixer */
+#if DEBUG_LEVEL & DBG_ENG
+    logMsg (DBG_ENG, "Mixing in sound on channel: %d\n", bestc);
+#endif
+
+    /* Retrieve the event entry from the sound table */
+    entry = engineSoundTableDataRetrieve (incoming_event->sound);
+
+    next_snd = (int)((double)entry->snd_cnt * rand () / (RAND_MAX + 1.0));
+    mixerAddEvent (entry->snds[next_snd],
+                   entry->lens[next_snd],
+                   (double)incoming_event->loc / 255.0,
+                   incoming_event->flags,
+                   bestc);
+
+    /* Update sound data structures */
+    gettimeofday (&tp, NULL);
+
+    threadLock (&tlock);
+
+    ASSERT (bestc >= 0 && bestc < no_ebuffs)
+
+    sched[bestc].startt = TP_IN_FP_SECS (tp);
+    sched[bestc].priorit = incoming_event->prior;
+
+#if DEBUG_LEVEL & DBG_ENG
+    logMsg (DBG_ENG, "Assigned to startt for bestc: %lf on channel: %d\n",
+            sched[bestc].startt, bestc);
+    logMsg (DBG_ENG, "\n");
+#endif
+
+    threadUnlock (&tlock);
+
+  } else if (incoming_event->type == STATE_T) {
+
+    STATE_ENTRY *entry = engineSoundTableDataRetrieve (incoming_event->sound);
+
+    /* Process a state sound. The mapping number corresponds directly to
+     * the number of event channels. This is checked when loading so we
+     * can do this: (Volumes must also be between 0.0 and 1.0 and double)
+     *
+     * Note that a dither of 255 (which should be default for the sender)
+     * does not change the fade time for the state. This means we can set
+     * at max a parameter of 254, which is never exactly the max fade
+     * time possible. Big deal.
      */
-    if (incoming_event->sound)
-        free (incoming_event->sound);
+    double fade = mixerGetFadeTime (entry->mixer_index);
+
+    if (incoming_event->dither != 255) {
+
+      fade = (double)incoming_event->dither / (255.0 / MAX_FADE_TIME);
+      mixerSetFadeTime (entry->mixer_index, fade);
+
+#if DEBUG_LEVEL & DBG_ENG
+      logMsg (DBG_ENG, "Set fade time for sound [%s] to [%lf].\n",
+              incoming_event->sound, fade);
+#endif
+
+    } else {
+
+#if DEBUG_LEVEL & DBG_ENG
+      logMsg (DBG_ENG, "Fade value for packet was 255. Using old value: [%lf].\n",
+              fade);
+#endif
+
+    }
+
+    /* Tell the mixer about the new event info */
+    mixerSetStateSnd (entry->mixer_index,
+                      (double)incoming_event->vol / 255.0,
+                      (double)incoming_event->loc / 255.0,
+                      incoming_event->flags);
+
+#if DEBUG_LEVEL & DBG_ENG
+    logMsg (DBG_ENG, "Set volume for state [%s] to [%lf].\n", incoming_event->sound,
+            (double)incoming_event->vol / 255.0);
+#endif
+
+  } else {
+
+#if DEBUG_LEVEL & DBG_ENG
+    logMsg (DBG_ENG, "Received event of an unsupported type. Discarding...\n");
+#endif
+
+  }
+
+  /* Free the sound string part of the event here.
+   * This needs to be free'd here since we might be queuing the
+   * event and need to keep the sound string around
+   */
+  if (incoming_event->sound) {
+    free (incoming_event->sound);
+  }
 
 }
 
 void engineShutdown (void)
 {
 
-    int i, j;
+  int i, j;
 
-    /* Free the engine scheduler data structure */
-    free (sched);
+  /* Free the engine scheduler data structure */
+  free (sched);
 
-    /* Free the engine sound table */
-    engineSoundTableDestroy ();
+  /* Free the engine sound table */
+  engineSoundTableDestroy ();
 
-    /* Destroy the mixer queue */
-    mixerQueueDestroy ();
+  /* Destroy the mixer queue */
+  mixerQueueDestroy ();
 
-    /* Destroy the engine queue */
-    engineQueueDestroy ();
+  /* Destroy the engine queue */
+  engineQueueDestroy ();
 
 }

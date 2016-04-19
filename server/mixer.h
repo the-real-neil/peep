@@ -32,50 +32,50 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 /* For autoconf time */
 #if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
+  #include <sys/time.h>
+  #include <time.h>
 #else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
+  #if HAVE_SYS_TIME_H
+    #include <sys/time.h>
+  #else
+    #include <time.h>
+  #endif
 #endif
 
 /* Event buffer descriptor */
 typedef struct {
-	short *snd_buf;    /* array of sound data */
-	unsigned int len;  /* length of data */
-	unsigned int pos;  /* current position ptr */
-	double stereo_pos; /* stereo (left) */
-	int filter_flag;   /* flag of effect filters to apply */
+  short *snd_buf;    /* array of sound data */
+  unsigned int len;  /* length of data */
+  unsigned int pos;  /* current position ptr */
+  double stereo_pos; /* stereo (left) */
+  int filter_flag;   /* flag of effect filters to apply */
 } EVENT_BUF;
 
 /* A single state sound entry */
 typedef struct {
-	short **snd_buf;      /* array of state segments */
-	unsigned int *len;    /* length of segments */
-	unsigned int snd_cnt; /* number of sounds per state */
-	unsigned int snd_no;  /* current segment to look at */
-	unsigned int pos;     /* position in that segment */
+  short **snd_buf;      /* array of state segments */
+  unsigned int *len;    /* length of segments */
+  unsigned int snd_cnt; /* number of sounds per state */
+  unsigned int snd_no;  /* current segment to look at */
+  unsigned int pos;     /* position in that segment */
 } STATE_SND;
 
 /* Threshold describing the bounds for at which an event applies */
 typedef struct {
-	double l_bound;       /* lower bound for the state */
-	double h_bound;       /* upper bound for the state */
-	STATE_SND state_snd;  /* the state sound associated with
+  double l_bound;       /* lower bound for the state */
+  double h_bound;       /* upper bound for the state */
+  STATE_SND state_snd;  /* the state sound associated with
 	                       * the entry
 	                       */
 } THRESHOLD;
 
 /* State buffer descriptor */
 typedef struct {
-	THRESHOLD *thresh;     /* threshold of each state segment */
-	int thresh_cnt;        /* number of thresholds */
-	double stereo_pos;     /* stereo (left) */
-	double vol;            /* volume */
-	int filter_flag;       /* flag of effect filters to apply */
+  THRESHOLD *thresh;     /* threshold of each state segment */
+  int thresh_cnt;        /* number of thresholds */
+  double stereo_pos;     /* stereo (left) */
+  double vol;            /* volume */
+  int filter_flag;       /* flag of effect filters to apply */
 } STATE_BUF;
 
 /**************************************************************************
@@ -86,9 +86,9 @@ typedef struct {
  * API to setup the sound card for play
  */
 void mixerInit (void *device,
-				unsigned int snd_port,
-				unsigned int ebuf,
-				unsigned int sbuf);
+                unsigned int snd_port,
+                unsigned int ebuf,
+                unsigned int sbuf);
 
 /* Returns the number of allocated event buffers */
 unsigned int mixerEBuffs (void);
@@ -102,7 +102,7 @@ unsigned int mixerSBuffs (void);
  * Returns the mixer success values.
  */
 int mixerAddEvent (short *snd, unsigned int len,
-				   double loc, int flags, unsigned int voice);
+                   double loc, int flags, unsigned int voice);
 
 /* Allocates memory for a new state, and assigns 'thresh_cnt' number of
  * different thresholds to the state. To create a state, this function
@@ -113,16 +113,16 @@ int mixerAllocNewState (unsigned int state, int thresh_cnt);
 
 /* Adds a threshold to the state buffer descriptor */
 int mixerAddStateThreshold (unsigned int state, unsigned int thresh_index,
-							double l_bound, double h_bound,
-							unsigned int snd_cnt);
+                            double l_bound, double h_bound,
+                            unsigned int snd_cnt);
 
 /* Adds a state sound within a threshold */
 int mixerAddState (unsigned int state, unsigned int thresh_index,
-				   unsigned int no_snd, short *sound, unsigned int len);
+                   unsigned int no_snd, short *sound, unsigned int len);
 
 /* Change the settings of a continuous playing state sound */
 void mixerSetStateSnd (unsigned int j, double vol,
-					   double stereo, int flags);
+                       double stereo, int flags);
 
 /* Returns whether a state sound with the given index exists within
  * the mixer data structures - 1 if true, 0 if false.
@@ -223,10 +223,10 @@ short mixerApplyEventFilters (short data, unsigned int pos, unsigned int j);
 short mixerApplyStateFilters (short data, unsigned int pos, unsigned int j);
 
 typedef struct {
-	double fade_time; /* time remaining at which to begin fading */
-	unsigned int snd; /* next random sound to play */
-	unsigned int pos; /* position in the next random sound */
-	int old_thresh;   /* old sound threshold index */
+  double fade_time; /* time remaining at which to begin fading */
+  unsigned int snd; /* next random sound to play */
+  unsigned int pos; /* position in the next random sound */
+  int old_thresh;   /* old sound threshold index */
 } FADE_REC;
 
 /* Functions for linear fading between states */

@@ -37,9 +37,9 @@ void freeXmlNormalizedString (char *s);
 #include "notice.h"
 
 typedef struct {
-	NOTICE *notice;
-	XML_Parser parser;
-	char *current_tag;
+  NOTICE *notice;
+  XML_Parser parser;
+  char *current_tag;
 } CLIENT_PARSE_INFO;
 
 /* Tags */
@@ -63,7 +63,7 @@ void xmlParseClientEvent (char *xml_string, int len, NOTICE *notice);
 
 /* The start tag handler used when parsing client notice events */
 void xmlParseClientStart (void *data, const XML_Char *tag_name,
-						  const XML_Char **attribs);
+                          const XML_Char **attribs);
 
 /* The end tag handler used when parsing client notice events */
 void xmlParseClientEnd (void *data, const XML_Char *tag_name);

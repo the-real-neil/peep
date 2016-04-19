@@ -49,38 +49,39 @@ int serverRealInit (void)
 {
 
 #if DEBUG_LEVEL & DBG_SRVR
-    logMsg (DBG_SRVR, "Initializing SSL server routines...\n");
+  logMsg (DBG_SRVR, "Initializing SSL server routines...\n");
 #endif
 
-    if (gethostname (localhost, PROT_MAX_HOSTNAME) < 0) {
+  if (gethostname (localhost, PROT_MAX_HOSTNAME) < 0) {
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't get my hostname: %s\n", strerror (errno));
-        return SERVER_FAILURE;
+    logMsg (DBG_GEN, "Uh Oh! Couldn't get my hostname: %s\n", strerror (errno));
+    return SERVER_FAILURE;
 
-    }
+  }
 
-    if ((host = gethostbyname (localhost)) == NULL) {
+  if ((host = gethostbyname (localhost)) == NULL) {
 
-        logMsg (DBG_GEN, "Uh Oh! Peep couldn't get local host information: %s\n", strerror (errno));
-        return SERVER_FAILURE;
+    logMsg (DBG_GEN, "Uh Oh! Peep couldn't get local host information: %s\n",
+            strerror (errno));
+    return SERVER_FAILURE;
 
-    }
+  }
 
-    host_node = (struct in_addr *)host->h_addr;
+  host_node = (struct in_addr *)host->h_addr;
 
-    if (!sslServerInit ()) {
-        return SERVER_FAILURE;
-    }
+  if (!sslServerInit ()) {
+    return SERVER_FAILURE;
+  }
 
-    if (!serverInitSocket ()) {
-        return SERVER_FAILURE;
-    }
+  if (!serverInitSocket ()) {
+    return SERVER_FAILURE;
+  }
 
-    if ((broadcast_fd = initializeBroadcast ()) < 0) {
-        return SERVER_FAILURE;
-    }
+  if ((broadcast_fd = initializeBroadcast ()) < 0) {
+    return SERVER_FAILURE;
+  }
 
-    return SERVER_SUCCESS;
+  return SERVER_SUCCESS;
 
 }
 
@@ -88,431 +89,433 @@ int sslServerInit (void)
 {
 
 #if DEBUG_LEVEL & DBG_SRVR
-    logMsg (DBG_SRVR, "Initializing SSL socket...\n");
+  logMsg (DBG_SRVR, "Initializing SSL socket...\n");
 #endif
 
-    /* Initialize the SSL routines */
-    if ((ctx = serverInitCTX ()) == NULL) {
+  /* Initialize the SSL routines */
+  if ((ctx = serverInitCTX ()) == NULL) {
 
-        logMsg (DBG_GEN, "Uh Oh! Initializing SSL routines failed. Aborting...\n");
-        return 0;
+    logMsg (DBG_GEN, "Uh Oh! Initializing SSL routines failed. Aborting...\n");
+    return 0;
 
-    }
+  }
 
-/* XXX Fix cert handling later */
+  /* XXX Fix cert handling later */
 #if 0
-    if (!serverLoadCerts (ctx, CERTIFICATE_PATH, KEY_PATH)) {
+  if (!serverLoadCerts (ctx, CERTIFICATE_PATH, KEY_PATH)) {
 
-        logMsg (DBG_GEN, "Uh Oh! Loading private key and public ceritficate failed. Aborting...\n");
-        return 0;
+    logMsg (DBG_GEN,
+            "Uh Oh! Loading private key and public ceritficate failed. Aborting...\n");
+    return 0;
 
-    }
+  }
 #endif
 
-    return 1;
+  return 1;
 
 }
 
 int serverInitSocket (void)
 {
 
-    /* Create the tcp socket for connections */
-    if ((server_fd = socket (AF_INET, SOCK_STREAM, 0)) < 0) {
+  /* Create the tcp socket for connections */
+  if ((server_fd = socket (AF_INET, SOCK_STREAM, 0)) < 0) {
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't create server socket: %s\n", strerror (errno));
-        return 0;
+    logMsg (DBG_GEN, "Uh Oh! Couldn't create server socket: %s\n",
+            strerror (errno));
+    return 0;
 
-    }
+  }
 
-    {
+  {
 
-        int x = 1;
+    int x = 1;
 
-        if (setsockopt (server_fd, SOL_SOCKET, SO_REUSEADDR, &x,
-                        sizeof (x)) == -1) {
+    if (setsockopt (server_fd, SOL_SOCKET, SO_REUSEADDR, &x,
+                    sizeof (x)) == -1) {
 
-            logMsg (DBG_GEN, "Uh Oh! Error setting socket options: %s\n", strerror (errno));
-            return 0;
-
-        }
-
-    }
-
-    /* Set non blocking flag so we don't wait on a false accept */
-    if (fcntl (server_fd, F_SETFL, O_NONBLOCK) < 0) {
-
-        logMsg (DBG_GEN, "Uh Oh! Error setting socket O_NONBLOCK option: %s\n", strerror (errno));
-        return 0;
+      logMsg (DBG_GEN, "Uh Oh! Error setting socket options: %s\n", strerror (errno));
+      return 0;
 
     }
 
-    memset (&saddr, 0, sizeof (struct sockaddr_in));
+  }
 
-    saddr.sin_family = AF_INET;
-    saddr.sin_addr.s_addr = INADDR_ANY;
-    saddr.sin_port = htons (serverGetPort ());
+  /* Set non blocking flag so we don't wait on a false accept */
+  if (fcntl (server_fd, F_SETFL, O_NONBLOCK) < 0) {
 
-    if (bind (server_fd, (struct sockaddr *)&saddr, sizeof (struct sockaddr_in)) < 0) {
+    logMsg (DBG_GEN, "Uh Oh! Error setting socket O_NONBLOCK option: %s\n",
+            strerror (errno));
+    return 0;
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't bind to socket: %s\n", strerror (errno));
-        return 0;
+  }
 
-    }
+  memset (&saddr, 0, sizeof (struct sockaddr_in));
 
-    if (listen (server_fd, PROT_LISTEN_QUEUE) < 0) {
+  saddr.sin_family = AF_INET;
+  saddr.sin_addr.s_addr = INADDR_ANY;
+  saddr.sin_port = htons (serverGetPort ());
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't setup listen queue: %s\n", strerror (errno));
-        return 0;
+  if (bind (server_fd, (struct sockaddr *)&saddr,
+            sizeof (struct sockaddr_in)) < 0) {
 
-    }
+    logMsg (DBG_GEN, "Uh Oh! Couldn't bind to socket: %s\n", strerror (errno));
+    return 0;
 
-    return 1;
+  }
+
+  if (listen (server_fd, PROT_LISTEN_QUEUE) < 0) {
+
+    logMsg (DBG_GEN, "Uh Oh! Couldn't setup listen queue: %s\n", strerror (errno));
+    return 0;
+
+  }
+
+  return 1;
 
 }
 
 SSL_CTX *serverInitCTX (void)
 {
 
-    SSL_METHOD *meth = NULL;
-    SSL_CTX *ctx = NULL;
+  SSL_METHOD *meth = NULL;
+  SSL_CTX *ctx = NULL;
 
-    /* Initialize the SSL library */
-    SSL_library_init ();
+  /* Initialize the SSL library */
+  SSL_library_init ();
 
-    /* Load the SSL error strings */
-    SSL_load_error_strings ();
+  /* Load the SSL error strings */
+  SSL_load_error_strings ();
 
-    /* Add in the SSL algorithms */
-    SSLeay_add_ssl_algorithms ();
+  /* Add in the SSL algorithms */
+  SSLeay_add_ssl_algorithms ();
 
-    /* Create new SSL context object */
-    meth = SSLv23_server_method ();  /* Support for v.2 & 3 */
-    if ((ctx = SSL_CTX_new (meth)) == NULL) {
+  /* Create new SSL context object */
+  meth = SSLv23_server_method ();  /* Support for v.2 & 3 */
+  if ((ctx = SSL_CTX_new (meth)) == NULL) {
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't create SSL context object: %s\n",
-                ERR_reason_error_string (ERR_get_error ()));
-        return NULL;
+    logMsg (DBG_GEN, "Uh Oh! Couldn't create SSL context object: %s\n",
+            ERR_reason_error_string (ERR_get_error ()));
+    return NULL;
 
-    }
+  }
 
-    return ctx;
+  return ctx;
 
 }
 
 int serverLoadCerts (SSL_CTX *ctx, char *certf, char *keyf)
 {
 
-    /* load the certificate file */
-    if (SSL_CTX_use_certificate_file (ctx, certf, SSL_FILETYPE_PEM) <= 0) {
+  /* load the certificate file */
+  if (SSL_CTX_use_certificate_file (ctx, certf, SSL_FILETYPE_PEM) <= 0) {
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't load certificate file %s: %s\n", certf,
-                ERR_reason_error_string (ERR_get_error () ));
-        return 0;
+    logMsg (DBG_GEN, "Uh Oh! Couldn't load certificate file %s: %s\n", certf,
+            ERR_reason_error_string (ERR_get_error () ));
+    return 0;
 
-    }
+  }
 
-    /* load private key file */
-    if (SSL_CTX_use_PrivateKey_file (ctx, keyf, SSL_FILETYPE_PEM) <= 0) {
+  /* load private key file */
+  if (SSL_CTX_use_PrivateKey_file (ctx, keyf, SSL_FILETYPE_PEM) <= 0) {
 
-        logMsg (DBG_GEN, "Uh Oh! Couldn't load private key file %s: %s\n", keyf,
-                ERR_reason_error_string (ERR_get_error () ));
-        return 0;
+    logMsg (DBG_GEN, "Uh Oh! Couldn't load private key file %s: %s\n", keyf,
+            ERR_reason_error_string (ERR_get_error () ));
+    return 0;
 
-    }
+  }
 
-    /* check the private key */
-    if (!SSL_CTX_check_private_key (ctx) ) {
+  /* check the private key */
+  if (!SSL_CTX_check_private_key (ctx) ) {
 
-        logMsg (DBG_GEN, "Uh Oh! Private key and public certificate do not match!\n");
-        return 0;
+    logMsg (DBG_GEN, "Uh Oh! Private key and public certificate do not match!\n");
+    return 0;
 
-    }
+  }
 
 #if DEBUG_LEVEL & DBG_SRVR
-    logMsg (DBG_SRVR, "Loaded certificate from: [%s].\n", certf);
-    logMsg (DBG_SRVR, "Loaded private key from: [%s].\n", keyf);
+  logMsg (DBG_SRVR, "Loaded certificate from: [%s].\n", certf);
+  logMsg (DBG_SRVR, "Loaded private key from: [%s].\n", keyf);
 #endif
 
-    return 1;
+  return 1;
 
 }
 
 void serverRealStart (void)
 {
 
-    struct sockaddr_in from;
-    unsigned long from_len = 0;
-    SSL *ssl;                /* SSL connection object */
-    pthread_t client_thread; /* handler for creating client thread */
-    fd_set read_set;         /* for use with select */
-    int cli = 0, highest_fd = 0;
+  struct sockaddr_in from;
+  unsigned long from_len = 0;
+  SSL *ssl;                /* SSL connection object */
+  pthread_t client_thread; /* handler for creating client thread */
+  fd_set read_set;         /* for use with select */
+  int cli = 0, highest_fd = 0;
 
-    /* For passing data to the servlets */
-    struct servlet_data *data = NULL;
+  /* For passing data to the servlets */
+  struct servlet_data *data = NULL;
 
-    logMsg (DBG_DEF, "%s | using INET address %s:%d\n", localhost,
-            inet_ntoa (*host_node), serverGetPort ());
+  logMsg (DBG_DEF, "%s | using INET address %s:%d\n", localhost,
+          inet_ntoa (*host_node), serverGetPort ());
 
-    highest_fd = (server_fd < broadcast_fd) ? broadcast_fd : server_fd;
+  highest_fd = (server_fd < broadcast_fd) ? broadcast_fd : server_fd;
 
-    /* start connections loop */
-    while (1) {
+  /* start connections loop */
+  while (1) {
 
-        /* Initialize select file descriptors */
-        FD_ZERO (&read_set);
-        FD_SET (server_fd, &read_set);
-        FD_SET (broadcast_fd, &read_set);
+    /* Initialize select file descriptors */
+    FD_ZERO (&read_set);
+    FD_SET (server_fd, &read_set);
+    FD_SET (broadcast_fd, &read_set);
 
-        select (highest_fd + 1, &read_set, NULL, NULL, NULL);
+    select (highest_fd + 1, &read_set, NULL, NULL, NULL);
 
-        /* Check if we've gotten a packet on the braodcast line */
-        if (FD_ISSET (broadcast_fd, &read_set)) {
-            receiveUDPPacket (broadcast_fd);
-	}
+    /* Check if we've gotten a packet on the braodcast line */
+    if (FD_ISSET (broadcast_fd, &read_set)) {
+      receiveUDPPacket (broadcast_fd);
+    }
 
-        /* Check if we've got an incoming connection */
-        if (FD_ISSET (server_fd, &read_set)) {
+    /* Check if we've got an incoming connection */
+    if (FD_ISSET (server_fd, &read_set)) {
 
-            from_len = sizeof (struct sockaddr_in);
-            if ((cli = accept (server_fd, (struct sockaddr *)&from,
-                               (socklen_t *)&from_len)) < 0) {
-
-#if DEBUG_LEVEL & DBG_SRVR
-                logMsg (DBG_SRVR, "Error accepting client connection: %s\n",
-                        strerror (errno));
-#endif
-                continue;
-
-            }
+      from_len = sizeof (struct sockaddr_in);
+      if ((cli = accept (server_fd, (struct sockaddr *)&from,
+                         (socklen_t *)&from_len)) < 0) {
 
 #if DEBUG_LEVEL & DBG_SRVR
-            logMsg (DBG_SRVR, "Received connection: %s:%d\n",
-                    inet_ntoa (from.sin_addr), ntohs (from.sin_port));
+        logMsg (DBG_SRVR, "Error accepting client connection: %s\n",
+                strerror (errno));
 #endif
+        continue;
 
-            ssl = SSL_new (ctx);
-            SSL_set_fd (ssl, cli);
-
-            /* Perform the SSL part of the accept */
-            if (SSL_accept (ssl) <= 0) {
+      }
 
 #if DEBUG_LEVEL & DBG_SRVR
-                logMsg (DBG_SRVR, "Error performing SSL handshake during accept: %s\n",
-                        ERR_reason_error_string (ERR_get_error ()));
+      logMsg (DBG_SRVR, "Received connection: %s:%d\n",
+              inet_ntoa (from.sin_addr), ntohs (from.sin_port));
 #endif
-                close (cli);
-                SSL_free (ssl);
-                continue;
 
-            }
+      ssl = SSL_new (ctx);
+      SSL_set_fd (ssl, cli);
+
+      /* Perform the SSL part of the accept */
+      if (SSL_accept (ssl) <= 0) {
 
 #if DEBUG_LEVEL & DBG_SRVR
-            logMsg (DBG_SRVR, "Client connection using cipher: %s\n", SSL_get_cipher (ssl));
-            serverLogCerts (ssl);
+        logMsg (DBG_SRVR, "Error performing SSL handshake during accept: %s\n",
+                ERR_reason_error_string (ERR_get_error ()));
+#endif
+        close (cli);
+        SSL_free (ssl);
+        continue;
+
+      }
+
+#if DEBUG_LEVEL & DBG_SRVR
+      logMsg (DBG_SRVR, "Client connection using cipher: %s\n", SSL_get_cipher (ssl));
+      serverLogCerts (ssl);
 #endif
 
-            /* Start connection thread */
-            data = malloc (sizeof *data);
-            data->ssl = ssl;
-            data->client = from;
-            startThread (serverServlet, data, &client_thread);
-            threadDetach (client_thread);
-
-        }
+      /* Start connection thread */
+      data = malloc (sizeof *data);
+      data->ssl = ssl;
+      data->client = from;
+      startThread (serverServlet, data, &client_thread);
+      threadDetach (client_thread);
 
     }
+
+  }
 
 }
 
 void serverLogCerts (SSL *ssl)
 {
 
-    X509 *certificate;
-    char *str;
+  X509 *certificate;
+  char *str;
 
-    certificate = SSL_get_peer_certificate (ssl);
-    logMsg (DBG_SRVR, "Client certificate:\n");
+  certificate = SSL_get_peer_certificate (ssl);
+  logMsg (DBG_SRVR, "Client certificate:\n");
 
-    if (certificate != NULL) {
+  if (certificate != NULL) {
 
-        str = X509_NAME_oneline (X509_get_subject_name (certificate), 0, 0);
-        logMsg (DBG_SRVR, "\tsubject: %s\n", str);
-        free (str);
+    str = X509_NAME_oneline (X509_get_subject_name (certificate), 0, 0);
+    logMsg (DBG_SRVR, "\tsubject: %s\n", str);
+    free (str);
 
-        str = X509_NAME_oneline (X509_get_issuer_name (certificate), 0, 0);
-        logMsg (DBG_SRVR, "\tIssuer: %s\n", str);
-        free (str);
+    str = X509_NAME_oneline (X509_get_issuer_name (certificate), 0, 0);
+    logMsg (DBG_SRVR, "\tIssuer: %s\n", str);
+    free (str);
 
-        X509_free (certificate);
-    }
-    else {
-        logMsg (DBG_SRVR, "\tNo certificate for the client was found.\n");
-    }
+    X509_free (certificate);
+  } else {
+    logMsg (DBG_SRVR, "\tNo certificate for the client was found.\n");
+  }
 
 }
 
 void *serverServlet (void *thread_data)
 {
 
-    PACKET msg;
-    fd_set read_set;
-    int size_recv = 0;
-    SSL *ssl = ((struct servlet_data *)thread_data)->ssl;
-    int fd = SSL_get_fd (ssl);
-    struct sockaddr_in client = ((struct servlet_data *)thread_data)->client;
+  PACKET msg;
+  fd_set read_set;
+  int size_recv = 0;
+  SSL *ssl = ((struct servlet_data *)thread_data)->ssl;
+  int fd = SSL_get_fd (ssl);
+  struct sockaddr_in client = ((struct servlet_data *)thread_data)->client;
 
-    free (thread_data);
-    thread_data = NULL;
+  free (thread_data);
+  thread_data = NULL;
 
-    /* Continously read events from client */
-    while (1) {
+  /* Continously read events from client */
+  while (1) {
 
-        FD_ZERO (&read_set);
-        FD_SET (fd, &read_set);
+    FD_ZERO (&read_set);
+    FD_SET (fd, &read_set);
 
-        select (fd + 1, &read_set, NULL, NULL, NULL);
+    select (fd + 1, &read_set, NULL, NULL, NULL);
 
-        size_recv = SSL_read (ssl, &msg.header, sizeof (HEADER));
+    size_recv = SSL_read (ssl, &msg.header, sizeof (HEADER));
 
-        if (size_recv < 0) {
-
-#if DEBUG_LEVEL & DBG_SRVR
-            logMsg (DBG_SRVR, "Error while reading from SSL socket: %s\n",
-                    ERR_reason_error_string (ERR_get_error () ));
-#endif
-
-            close (fd);
-            SSL_free (ssl);
-            return NULL;
-
-        }
-        else if (size_recv == 0) {
-
-            /* The connection has been severed - i.e we polled something
-             * but read 0 data.
-             */
-            close (fd);
-            SSL_free (ssl);
-            return NULL;
-
-        }
-
-        /* Swap byte order between network and host */
-        msg.header.magic = ntohl (msg.header.magic);
-        msg.header.len = ntohl (msg.header.len);
-
-        /* Print out packet header */
-#if DEBUG_LEVEL & DBG_SRVR
-        logMsg (DBG_SRVR, "Packet header:\n");
-        logMsg (DBG_SRVR, "\tversion: [%d]\n", msg.header.version);
-        logMsg (DBG_SRVR, "\ttype:    [%d]\n", msg.header.type);
-        logMsg (DBG_SRVR, "\tcontent: [%d]\n", msg.header.content);
-        logMsg (DBG_SRVR, "\tmagic:   [0x%x]\n", msg.header.magic);
-        logMsg (DBG_SRVR, "\tlen:     [%d]\n", msg.header.len);
-#endif
-
-        if (msg.header.magic != PROT_MAGIC_NUMBER) {
-            continue;
-	}
-
-        /* Process packet */
-        switch (msg.header.type) {
-
-        case PROT_BC_CLIENT:
-
-            msg.body = malloc(msg.header.len);
-            size_recv = SSL_read (ssl, msg.body, msg.header.len);
-
-            if (size_recv != msg.header.len) {
+    if (size_recv < 0) {
 
 #if DEBUG_LEVEL & DBG_SRVR
-                logMsg (DBG_SRVR, "Error while reading body of client broadcast packet: %s\n",
-                        ERR_reason_error_string (ERR_get_error () ));
+      logMsg (DBG_SRVR, "Error while reading from SSL socket: %s\n",
+              ERR_reason_error_string (ERR_get_error () ));
 #endif
-                goto servletERR;
 
-            }
+      close (fd);
+      SSL_free (ssl);
+      return NULL;
 
-            serverProcessClientBC ((MSG_STRING)msg.body, msg.header.len, &client);
-            break;
+    } else if (size_recv == 0) {
 
-        case PROT_CLIENT_EVENT:
-
-        {
-            char *buffer = malloc (msg.header.len);
-            size_recv = SSL_read (ssl, msg.body, msg.header.len);
-
-            if (size_recv != msg.header.len) {
-
-#if DEBUG_LEVEL & DBG_SRVR
-                logMsg (DBG_SRVR, "Error while reading body of client event packet: %s\n",
-                        ERR_reason_error_string (ERR_get_error () ));
-#endif
-                goto servletERR;
-
-            }
-
-            serverProcessClientEventPacket (&msg, buffer);
-            free (buffer);
-        }
-
-        continue; /* No need to free the body */
-
-        case PROT_BC_SERVER:
-
-            msg.body = malloc (msg.header.len);
-            size_recv = SSL_read (ssl, msg.body, msg.header.len);
-
-            if (!size_recv != msg.header.len) {
-
-#if DEBUG_LEVEL & DBG_SRVR
-                logMsg (DBG_SRVR, "Error while reading body of server broadcast packet: %s\n",
-                        ERR_reason_error_string (ERR_get_error () ));
-#endif
-                goto servletERR;
-
-            }
-
-#if DEBUG_LEVEL & DBG_SRVR
-            logMsg (DBG_SRVR, "Received broadcast from other server. Discarding...\n");
-#endif
-            break;
-
-        default:
-
-            msg.body = malloc (msg.header.len);
-            size_recv = SSL_read (ssl, msg.body, msg.header.len);
-
-            if (!size_recv != msg.header.len) {
-
-#if DEBUG_LEVEL & DBG_SRVR
-                logMsg (DBG_SRVR, "Error while reading body of unsupported packet type: %s\n",
-                        ERR_reason_error_string (ERR_get_error () ));
-#endif
-                goto servletERR;
-
-            }
-
-#if DEBUG_LEVEL & DBG_SRVR
-            logMsg (DBG_SRVR, "Received unsupported packet type. Discarding...\n");
-#endif
-            break;
-
-        }
-
-    servletERR:
-        free (msg.body);
+      /* The connection has been severed - i.e we polled something
+       * but read 0 data.
+       */
+      close (fd);
+      SSL_free (ssl);
+      return NULL;
 
     }
+
+    /* Swap byte order between network and host */
+    msg.header.magic = ntohl (msg.header.magic);
+    msg.header.len = ntohl (msg.header.len);
+
+    /* Print out packet header */
+#if DEBUG_LEVEL & DBG_SRVR
+    logMsg (DBG_SRVR, "Packet header:\n");
+    logMsg (DBG_SRVR, "\tversion: [%d]\n", msg.header.version);
+    logMsg (DBG_SRVR, "\ttype:    [%d]\n", msg.header.type);
+    logMsg (DBG_SRVR, "\tcontent: [%d]\n", msg.header.content);
+    logMsg (DBG_SRVR, "\tmagic:   [0x%x]\n", msg.header.magic);
+    logMsg (DBG_SRVR, "\tlen:     [%d]\n", msg.header.len);
+#endif
+
+    if (msg.header.magic != PROT_MAGIC_NUMBER) {
+      continue;
+    }
+
+    /* Process packet */
+    switch (msg.header.type) {
+
+    case PROT_BC_CLIENT:
+
+      msg.body = malloc(msg.header.len);
+      size_recv = SSL_read (ssl, msg.body, msg.header.len);
+
+      if (size_recv != msg.header.len) {
+
+#if DEBUG_LEVEL & DBG_SRVR
+        logMsg (DBG_SRVR, "Error while reading body of client broadcast packet: %s\n",
+                ERR_reason_error_string (ERR_get_error () ));
+#endif
+        goto servletERR;
+
+      }
+
+      serverProcessClientBC ((MSG_STRING)msg.body, msg.header.len, &client);
+      break;
+
+    case PROT_CLIENT_EVENT:
+
+    {
+      char *buffer = malloc (msg.header.len);
+      size_recv = SSL_read (ssl, msg.body, msg.header.len);
+
+      if (size_recv != msg.header.len) {
+
+#if DEBUG_LEVEL & DBG_SRVR
+        logMsg (DBG_SRVR, "Error while reading body of client event packet: %s\n",
+                ERR_reason_error_string (ERR_get_error () ));
+#endif
+        goto servletERR;
+
+      }
+
+      serverProcessClientEventPacket (&msg, buffer);
+      free (buffer);
+    }
+
+      continue; /* No need to free the body */
+
+    case PROT_BC_SERVER:
+
+      msg.body = malloc (msg.header.len);
+      size_recv = SSL_read (ssl, msg.body, msg.header.len);
+
+      if (!size_recv != msg.header.len) {
+
+#if DEBUG_LEVEL & DBG_SRVR
+        logMsg (DBG_SRVR, "Error while reading body of server broadcast packet: %s\n",
+                ERR_reason_error_string (ERR_get_error () ));
+#endif
+        goto servletERR;
+
+      }
+
+#if DEBUG_LEVEL & DBG_SRVR
+      logMsg (DBG_SRVR, "Received broadcast from other server. Discarding...\n");
+#endif
+      break;
+
+    default:
+
+      msg.body = malloc (msg.header.len);
+      size_recv = SSL_read (ssl, msg.body, msg.header.len);
+
+      if (!size_recv != msg.header.len) {
+
+#if DEBUG_LEVEL & DBG_SRVR
+        logMsg (DBG_SRVR, "Error while reading body of unsupported packet type: %s\n",
+                ERR_reason_error_string (ERR_get_error () ));
+#endif
+        goto servletERR;
+
+      }
+
+#if DEBUG_LEVEL & DBG_SRVR
+      logMsg (DBG_SRVR, "Received unsupported packet type. Discarding...\n");
+#endif
+      break;
+
+    }
+
+servletERR:
+    free (msg.body);
+
+  }
 
 }
 
 void serverRealShutdown (void)
 {
 
-    /* Close server socket */
-    close (server_fd);
-    SSL_CTX_free (ctx);
+  /* Close server socket */
+  close (server_fd);
+  SSL_CTX_free (ctx);
 
 }
 

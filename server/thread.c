@@ -28,167 +28,166 @@
 int startThread (THREAD_FUNC func, void *data, pthread_t *handle)
 {
 
-    int rc;
+  int rc;
 
-    pthread_attr_t attr;
+  pthread_attr_t attr;
 
-    rc = pthread_attr_init (&attr);
-    rc = pthread_create (handle, &attr, func, data);
-    pthread_attr_destroy (&attr);
+  rc = pthread_attr_init (&attr);
+  rc = pthread_create (handle, &attr, func, data);
+  pthread_attr_destroy (&attr);
 
-    return rc;
+  return rc;
 
 }
 
 void threadLockInit (pthread_mutex_t *lock)
 {
 
-    pthread_mutex_init (lock, NULL);
+  pthread_mutex_init (lock, NULL);
 
 }
 
 void threadLock (pthread_mutex_t *lock)
 {
 
-    pthread_mutex_lock (lock);
+  pthread_mutex_lock (lock);
 
 }
 
 void threadUnlock (pthread_mutex_t *lock)
 {
 
-    pthread_mutex_unlock (lock);
+  pthread_mutex_unlock (lock);
 
 }
 
 void threadSleep (unsigned long utime)
 {
 
-    usleep (utime);
+  usleep (utime);
 
 }
 
 void threadCheckCancelled ()
 {
 
-    pthread_testcancel ();
+  pthread_testcancel ();
 
 }
 
 void threadKill (pthread_t thread)
 {
 
-    pthread_cancel (thread);
+  pthread_cancel (thread);
 
 }
 
 void threadDetach (pthread_t thread)
 {
 
-    pthread_detach (thread);
+  pthread_detach (thread);
 
 }
 
 void threadBlockSignals (void)
 {
 
-    sigset_t new_mask, old_mask;
+  sigset_t new_mask, old_mask;
 
-    sigemptyset (&new_mask);
-    sigaddset (&new_mask, SIGINT);
-    sigaddset (&new_mask, SIGHUP);
+  sigemptyset (&new_mask);
+  sigaddset (&new_mask, SIGINT);
+  sigaddset (&new_mask, SIGHUP);
 
-    pthread_sigmask (SIG_BLOCK, &new_mask, &old_mask);
+  pthread_sigmask (SIG_BLOCK, &new_mask, &old_mask);
 
 }
 
 sem_t *semaphoreCreate (int value)
 {
 
-    sem_t *sem = NULL;
+  sem_t *sem = NULL;
 
-    if ((sem = malloc (sizeof *sem)) == NULL) {
+  if ((sem = malloc (sizeof *sem)) == NULL) {
 
-        logMsg (DBG_GEN, "Error creating a new semaphore: %s\n", strerror (errno));
-        return NULL;
+    logMsg (DBG_GEN, "Error creating a new semaphore: %s\n", strerror (errno));
+    return NULL;
 
-    }
+  }
 
-    if (sem_init (sem, 0, value) < 0) {
+  if (sem_init (sem, 0, value) < 0) {
 
-        logMsg (DBG_GEN, "Error initializing a new semaphore: %s\n", strerror (errno));
-        free (sem);
-        return NULL;
+    logMsg (DBG_GEN, "Error initializing a new semaphore: %s\n", strerror (errno));
+    free (sem);
+    return NULL;
 
-    }
+  }
 
-    return sem;
+  return sem;
 
 }
 
 int semaphoreAcquire (sem_t *sem, int blocking)
 {
 
-    int ret = 0;
+  int ret = 0;
 
-    if (blocking) {
+  if (blocking) {
 
-        if ((ret = sem_wait (sem)) < 0) {
+    if ((ret = sem_wait (sem)) < 0) {
 
-            logMsg (DBG_GEN, "Error waiting on and decrementing a semaphore: %s\n", strerror (errno));
-            return 0;
-
-        }
-
-    }
-    else {
-
-        if ((ret = sem_trywait (sem)) < 0) {
-
-            if (ret != EAGAIN) {
-                logMsg (DBG_GEN, "Error performing non-blocking acquire of a semaphore: %s\n",
-                        strerror (errno));
-	    }
-
-            return 0;
-
-        }
+      logMsg (DBG_GEN, "Error waiting on and decrementing a semaphore: %s\n",
+              strerror (errno));
+      return 0;
 
     }
 
-    return 1;
+  } else {
+
+    if ((ret = sem_trywait (sem)) < 0) {
+
+      if (ret != EAGAIN) {
+        logMsg (DBG_GEN, "Error performing non-blocking acquire of a semaphore: %s\n",
+                strerror (errno));
+      }
+
+      return 0;
+
+    }
+
+  }
+
+  return 1;
 
 }
 
 int semaphoreRelease (sem_t *sem)
 {
 
-    if (sem_post (sem) < 0) {
+  if (sem_post (sem) < 0) {
 
-        logMsg (DBG_GEN, "Error incrementing a semaphore: %s\n", strerror (errno));
-        return 0;
+    logMsg (DBG_GEN, "Error incrementing a semaphore: %s\n", strerror (errno));
+    return 0;
 
-    }
+  }
 
-    return 1;
+  return 1;
 
 }
 
 int semaphoreDestroy (sem_t *sem)
 {
 
-    if (sem && sem_destroy (sem) < 0) {
+  if (sem && sem_destroy (sem) < 0) {
 
-        logMsg (DBG_GEN, "Error destroying a semaphore: %s\n", strerror (errno));
-        free (sem);
-        return 0;
+    logMsg (DBG_GEN, "Error destroying a semaphore: %s\n", strerror (errno));
+    free (sem);
+    return 0;
 
-    }
-    else {
+  } else {
 
-        free (sem);
-        return 1;
+    free (sem);
+    return 1;
 
-    }
+  }
 
 }

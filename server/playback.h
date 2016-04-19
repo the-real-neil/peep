@@ -29,26 +29,25 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 /* For time definitions */
 #if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
+  #include <sys/time.h>
+  #include <time.h>
 #else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
+  #if HAVE_SYS_TIME_H
+    #include <sys/time.h>
+  #else
+    #include <time.h>
+  #endif
 #endif
 #include <unistd.h>
 
-struct playback_h
-{
-	char major_ver;          /* version of the playback format */
-	char minor_ver;
-	unsigned int max_events; /* number of events in the file */
-	unsigned long written;   /* number of events written to the file */
-	long start_pos;          /* position of the starting event */
-	struct timeval start_t;  /* start time of the recording */
-	struct timeval end_t;    /* last time recorded */
+struct playback_h {
+  char major_ver;          /* version of the playback format */
+  char minor_ver;
+  unsigned int max_events; /* number of events in the file */
+  unsigned long written;   /* number of events written to the file */
+  long start_pos;          /* position of the starting event */
+  struct timeval start_t;  /* start time of the recording */
+  struct timeval end_t;    /* last time recorded */
 };
 
 /* Format is:
@@ -62,9 +61,8 @@ struct playback_h
 /* The playback record includes the event with the mix-in time filled
  * in so we can determine when to play back an event
  */
-typedef struct
-{
-	ENGINE_EVENT record;
+typedef struct {
+  ENGINE_EVENT record;
 } playback_t;
 
 typedef enum mode

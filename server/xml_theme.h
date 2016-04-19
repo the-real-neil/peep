@@ -55,55 +55,55 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * initialization. This can be changed to a hash table later.
  */
 struct trans_table {
-	char *name;               /* name of the sound */
-	char *category;           /* sound category */
-	char *type;               /* sound type */
-	char *format;             /* sound format */
-	char *desc;               /* sound description */
-	char *path;               /* path in repository */
+  char *name;               /* name of the sound */
+  char *category;           /* sound category */
+  char *type;               /* sound type */
+  char *format;             /* sound format */
+  char *desc;               /* sound description */
+  char *path;               /* path in repository */
 
-	struct trans_table *next; /* ptr to next entry */
+  struct trans_table *next; /* ptr to next entry */
 };
 
 /* Structure for performing counting of tags to determine size
  * of data structures before the actual parse.
  */
 typedef struct {
-	char *sound_path;         /* Path to repository */
+  char *sound_path;         /* Path to repository */
 
-	/* Parsing context */
-	int context;              /* context identifier */
-	char *current_tag;        /* current tag context */
+  /* Parsing context */
+  int context;              /* context identifier */
+  char *current_tag;        /* current tag context */
 
-	/* For counting state thresholds */
-	int *thresholds;          /* index of threshold numbers per state */
-	int states;               /* count of states in the file */
+  /* For counting state thresholds */
+  int *thresholds;          /* index of threshold numbers per state */
+  int states;               /* count of states in the file */
 
-	/* Translation */
-	struct trans_table *cur_ent; /* current entry */
+  /* Translation */
+  struct trans_table *cur_ent; /* current entry */
 } FIRST_PASS_INFO;
 
 /* Structure for mainting state during parsing */
 typedef struct {
-	/* Global identifiers */
-	int *event_cnt;     /* global count of parsed events */
-	int *state_cnt;     /* global count of parsed states */
+  /* Global identifiers */
+  int *event_cnt;     /* global count of parsed events */
+  int *state_cnt;     /* global count of parsed states */
 
-	/* Parsing context */
-	char *current_tag;  /* current tag context */
-	int context;        /* context identifier */
+  /* Parsing context */
+  char *current_tag;  /* current tag context */
+  int context;        /* context identifier */
 
-	/* For mapping sounds */
-	char *name;         /* Name of the sound to be loaded */
-	char *path;
+  /* For mapping sounds */
+  char *name;         /* Name of the sound to be loaded */
+  char *path;
 
-	/* For loading state sounds only */
-	int *thresholds;    /* index of threshold numbers per state */
-	int thresh_cnt;     /* count of thresholds processed for current state */
-	int thresh_index;   /* index into thresholds array */
-	float l_bound;
-	float h_bound;
-	float fade;
+  /* For loading state sounds only */
+  int *thresholds;    /* index of threshold numbers per state */
+  int thresh_cnt;     /* count of thresholds processed for current state */
+  int thresh_index;   /* index into thresholds array */
+  float l_bound;
+  float h_bound;
+  float fade;
 } SECOND_PASS_INFO;
 
 /* Creates an entry in the translation table from sound name to
@@ -126,13 +126,13 @@ void xmlThemeFreeTransEntry (struct trans_table *entry);
  * and states loaded within the parser.
  */
 int xmlParseTheme (char *xml_string, char *sound_path, int *event_cnt,
-				   int *state_cnt);
+                   int *state_cnt);
 
 /* Handler for counting the number of events/states and building
  * the sound name to path translation table.
  */
 void xmlParseFirstPassStart (void *data, const XML_Char *tag_name,
-								  const XML_Char **attribs);
+                             const XML_Char **attribs);
 
 /* Handles end tags during the first parse. */
 void xmlParseFirstPassEnd (void *data, const XML_Char *tag_name);
@@ -144,7 +144,7 @@ void xmlParseFirstPassChar (void *data, const XML_Char *s, int len);
  * sound files
  */
 void xmlParseSecondPassStart (void *data, const XML_Char *tag_name,
-							  const XML_Char **attribs);
+                              const XML_Char **attribs);
 
 /* Handles end tags during the actual parse */
 void xmlParseSecondPassEnd (void *data, const XML_Char *tag_name);

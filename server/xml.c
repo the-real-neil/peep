@@ -22,59 +22,57 @@
 char *createXmlNormalizedString (char *s, int len)
 {
 
-    char *str = malloc (len + 1);
-    int i, j;
+  char *str = malloc (len + 1);
+  int i, j;
 
-    for (i = 0, j = 0; i < len; i++) {
+  for (i = 0, j = 0; i < len; i++) {
 
-        switch (s[i]) {
+    switch (s[i]) {
 
-        case '\n':
-        case '\t':
+    case '\n':
+    case '\t':
 
-            continue;
+      continue;
 
-        case ' ':
+    case ' ':
 
-            if (isalnum (s[i + 1])) {
+      if (isalnum (s[i + 1])) {
 
-                str[j++] = ' ';
-                str[j++] = s[i + 1];
-                i += 2;
+        str[j++] = ' ';
+        str[j++] = s[i + 1];
+        i += 2;
 
-            }
-            else {
-                continue;
-	    }
+      } else {
+        continue;
+      }
 
-        default:
+    default:
 
-            str[j++] = s[i];
-            break;
-
-        }
+      str[j++] = s[i];
+      break;
 
     }
 
-    str[j] = '\0';
+  }
 
-    /* Check if string is empty */
-    if (str[0] == '\0') {
+  str[j] = '\0';
 
-        free (str);
-        return NULL;
+  /* Check if string is empty */
+  if (str[0] == '\0') {
 
-    }
-    else {
-        return str;
-    }
+    free (str);
+    return NULL;
+
+  } else {
+    return str;
+  }
 
 }
 
 void freeXmlNormalizedString (char *s)
 {
 
-    free (s);
+  free (s);
 
 }
 

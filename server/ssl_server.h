@@ -23,13 +23,13 @@
 #include "server.h"
 
 #ifndef PEEPD_SHARED
-#define PEEPD_SHARED "./"
+  #define PEEPD_SHARED "./"
 #endif
 #ifndef CERTIFICATE_PATH
-#define CERTIFICATE_PATH PEEPD_SHARED "peepd-cert.pem"
+  #define CERTIFICATE_PATH PEEPD_SHARED "peepd-cert.pem"
 #endif
 #ifndef KEY_PATH
-#define KEY_PATH PEEPD_SHARED "peepd-cert.pem"
+  #define KEY_PATH PEEPD_SHARED "peepd-cert.pem"
 #endif
 
 /* SSL includes for declarations */
@@ -41,8 +41,8 @@
 #include <openssl/err.h>
 
 struct servlet_data {
-    SSL *ssl;                  /* pointer to SSL object */
-    struct sockaddr_in client; /* client address */
+  SSL *ssl;                  /* pointer to SSL object */
+  struct sockaddr_in client; /* client address */
 };
 
 /* Initialize the server routines, sets up SSL sockets

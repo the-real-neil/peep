@@ -23,18 +23,18 @@
 #define PROT_VERSION     2
 
 enum {
-    PROT_UNDEFINED =    0,
-    PROT_BC_SERVER =    (1 << 0),
-    PROT_BC_CLIENT =    (1 << 1),
-    PROT_CLIENT_EVENT = (1 << 2)
+  PROT_UNDEFINED =    0,
+  PROT_BC_SERVER =    (1 << 0),
+  PROT_BC_CLIENT =    (1 << 1),
+  PROT_CLIENT_EVENT = (1 << 2)
 };
 
 /* Content types */
 enum {
-    PROT_CONTENT_UNDEFINED = 0,
-    PROT_CONTENT_XML       = (1 << 0),
-    PROT_CONTENT_EVENT     = (1 << 1),
-    PROT_CONTENT_MSG       = (1 << 2)
+  PROT_CONTENT_UNDEFINED = 0,
+  PROT_CONTENT_XML       = (1 << 0),
+  PROT_CONTENT_EVENT     = (1 << 1),
+  PROT_CONTENT_MSG       = (1 << 2)
 };
 
 
@@ -52,18 +52,18 @@ enum {
 
 /* Peep protocol packet */
 typedef struct {
-    unsigned char version; /* major protocol version */
-    unsigned char type;    /* type of packet */
-    unsigned char content; /* contents format */
-    char reserved[5];      /* reserved */
-    int magic;             /* magic number for checking */
-    int len;               /* length of the contents */
+  unsigned char version; /* major protocol version */
+  unsigned char type;    /* type of packet */
+  unsigned char content; /* contents format */
+  char reserved[5];      /* reserved */
+  int magic;             /* magic number for checking */
+  int len;               /* length of the contents */
 } HEADER;
 
 /* Holder structure for the packet */
 typedef struct {
-    HEADER header;         /* packet header */
-    void *body;            /* body of the actual message */
+  HEADER header;         /* packet header */
+  void *body;            /* body of the actual message */
 } PACKET;
 
 /* For event definition */
@@ -75,23 +75,23 @@ typedef EVENT EVENT_BODY;
 typedef char * MSG_STRING;
 
 struct hostlist {
-    struct in_addr host;      /* the ip address of the host */
-    unsigned int port;        /* port address to use when addressing the host */
-    struct hostlist *nextent; /* next entry in list */
+  struct in_addr host;      /* the ip address of the host */
+  unsigned int port;        /* port address to use when addressing the host */
+  struct hostlist *nextent; /* next entry in list */
 };
 
 typedef struct broadcast {
-    int port;
-    struct broadcast *next;
+  int port;
+  struct broadcast *next;
 } BROADCAST;
 
 #define MAX_UDP_PACKET_SIZE 512
 
 enum {
-    SERVER_SUCCESS = 1,
-    SERVER_FAILURE = -1,
-    SERVER_ALLOC_FAILED = -2,
-    SERVER_NOT_YET_ALLOC = -3
+  SERVER_SUCCESS = 1,
+  SERVER_FAILURE = -1,
+  SERVER_ALLOC_FAILED = -2,
+  SERVER_NOT_YET_ALLOC = -3
 };
 
 /**********************************************************************
@@ -99,7 +99,7 @@ enum {
  **********************************************************************/
 
 /* Set the server port. Should be called *before* serverInit () */
-    void serverSetPort (int p);
+void serverSetPort (int p);
 
 /* Gets the server port */
 int serverGetPort (void);

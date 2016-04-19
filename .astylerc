@@ -1,0 +1,17 @@
+# gws2/.astylerc
+#
+# options file for `astyle`
+#
+# http://astyle.sourceforge.net/
+
+# brackets
+--style=linux
+--add-brackets
+
+# indentation
+--indent=spaces=2
+--indent-preproc-block
+--indent-preproc-define
+
+# column limit
+--max-code-length=80

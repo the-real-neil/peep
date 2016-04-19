@@ -42,8 +42,8 @@ void serverRealShutdown (void);
 int serverInitSocket (void);
 
 struct servlet_data {
-	int fd;                    /* client file descriptor */
-	struct sockaddr_in client; /* client address */
+  int fd;                    /* client file descriptor */
+  struct sockaddr_in client; /* client address */
 };
 
 /* A threaded servlet function that servers TCP client connections */

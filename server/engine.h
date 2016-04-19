@@ -23,46 +23,46 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * definitions
  */
 #if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
+  #include <sys/time.h>
+  #include <time.h>
 #else
-# if HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
+  #if HAVE_SYS_TIME_H
+    #include <sys/time.h>
+  #else
+    #include <time.h>
+  #endif
 #endif
 #include <unistd.h>
 
 typedef struct {
-	unsigned char type;      /* state or single event */
-	unsigned char loc;       /* stereo location (left - 0, right - 255) */
-	unsigned char prior;     /* priority of the event */
-	unsigned char vol;       /* volume of the event */
-	unsigned char dither;    /* adjustable parameter for sound dithering
+  unsigned char type;      /* state or single event */
+  unsigned char loc;       /* stereo location (left - 0, right - 255) */
+  unsigned char prior;     /* priority of the event */
+  unsigned char vol;       /* volume of the event */
+  unsigned char dither;    /* adjustable parameter for sound dithering
 							  * 2 meanings:
 							  *   1) Applies to states. sets the fade-in time
 							  *      when mixing between state sounds
 							  *   2) Applies delay to handle events which
 							  *      occur in spurts - currently unimplemented
 							  */
-	char reserved[3];        /* reserved for future effects attributes */
-	int flags;               /* effects flags */
-	int sound_len;           /* Length of the sound string */
-	char *sound;             /* sound to play, ref by name */
+  char reserved[3];        /* reserved for future effects attributes */
+  int flags;               /* effects flags */
+  int sound_len;           /* Length of the sound string */
+  char *sound;             /* sound to play, ref by name */
 } EVENT;
 
 typedef struct {
-	EVENT event;
-	struct timeval mix_time; /* time when an event was enqueued */
+  EVENT event;
+  struct timeval mix_time; /* time when an event was enqueued */
 } ENGINE_EVENT;
 
 typedef enum { EVENT_T, STATE_T } EVENT_TYPE;
 
 struct engine_sched {
-	double startt;    /* start times for each voicing */
-	long priorit;     /* priority for currently playing sound */
-	double minendt;   /* end time of the sound - currently unused */
+  double startt;    /* start times for each voicing */
+  long priorit;     /* priority for currently playing sound */
+  double minendt;   /* end time of the sound - currently unused */
 };
 
 #define ENGINE_SUCCESS 1
@@ -80,19 +80,19 @@ struct engine_sched {
 #define HASHES                  256
 
 typedef struct {
-	short **snds;              /* array of event samples in mem */
-	unsigned int *lens;        /* length of samples */
-	unsigned int snd_cnt;      /* number of event sounds associated with an event */
+  short **snds;              /* array of event samples in mem */
+  unsigned int *lens;        /* length of samples */
+  unsigned int snd_cnt;      /* number of event sounds associated with an event */
 } EVENT_ENTRY;
 
 typedef struct {
-	int mixer_index;           /* The index within the internal buffer of the mixer */
+  int mixer_index;           /* The index within the internal buffer of the mixer */
 } STATE_ENTRY;
 
 struct sound_entry {
-	struct sound_entry *next;   /* Pointer to the next entry in the hash list */
-	char *name;                 /* Name of the sound to look up */
-	void *data;                 /* Pointer to the type of data. Depending on type,
+  struct sound_entry *next;   /* Pointer to the next entry in the hash list */
+  char *name;                 /* Name of the sound to look up */
+  void *data;                 /* Pointer to the type of data. Depending on type,
 	                             * this can be a pointer to a:
 	                             *   EVENT_ENTRY, which contains the data
 	                             *   associated with an event.
@@ -100,7 +100,7 @@ struct sound_entry {
 	                             *   STATE_BUF, which contains the index of the
 	                             *   mixer buffer that holds the states
 	                             */
-	EVENT_TYPE type;            /* Type of the event stored */
+  EVENT_TYPE type;            /* Type of the event stored */
 };
 
 /* Allocate and create the sound table data structure */
@@ -143,7 +143,7 @@ int engineSoundHash (char *name);
  * and state buffers to use for sound playback
  */
 void engineInit (char *device, unsigned int snd_port,
-				 unsigned int ebuf, unsigned int sbuf);
+                 unsigned int ebuf, unsigned int sbuf);
 
 /* Initializing the scheduling data structures associated with a given
  * sound. Parameters are the start time of the sound, the priority of
@@ -171,7 +171,7 @@ void engineFreeEventEntry (EVENT_ENTRY *entry);
  * of the sound data.
  */
 int engineEventEntryAssignSnd (EVENT_ENTRY *entry, int event_no,
-							   short *sound, unsigned int len);
+                               short *sound, unsigned int len);
 
 /* Returns the array of sound data associated with the given name
  * and reference number
@@ -214,6 +214,6 @@ void engineShutdown (void);
 #define QUEUE_EXPIRED (5 * CLOCKS_PER_SEC)
 
 #define TP_IN_FP_SECS(x) \
-	( (double)x.tv_sec + ( (double)x.tv_usec * 0.000001) )
+  ( (double)x.tv_sec + ( (double)x.tv_usec * 0.000001) )
 
 #endif

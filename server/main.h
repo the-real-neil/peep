@@ -23,9 +23,9 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 /* Select the default sound device to use */
 #ifdef __USING_ALSA__
-#define DEFAULT_SND_DEVICE NULL
+  #define DEFAULT_SND_DEVICE NULL
 #else
-#define DEFAULT_SND_DEVICE "/dev/audio"
+  #define DEFAULT_SND_DEVICE "/dev/audio"
 #endif
 
 /* Default to using the sound jack output instead of speakers

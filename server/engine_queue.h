@@ -27,9 +27,9 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  *   server thread
  */
 typedef struct engine_queue_element {
-	EVENT incoming_event;
-	struct engine_queue_element *next;
-	struct engine_queue_element *prev;
+  EVENT incoming_event;
+  struct engine_queue_element *next;
+  struct engine_queue_element *prev;
 } ENGINE_QUEUE_ELEMENT;
 
 /* Initialize the engine queue */

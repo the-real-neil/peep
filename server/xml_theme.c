@@ -33,109 +33,114 @@
  */
 static struct trans_table *trans_table = NULL;
 
-int xmlParseTheme (char *xml_string, char *sound_path, int *event_cnt, int *state_cnt)
+int xmlParseTheme (char *xml_string, char *sound_path, int *event_cnt,
+                   int *state_cnt)
 {
 
-    XML_Parser parser;
-    FIRST_PASS_INFO *first_info;
-    SECOND_PASS_INFO *second_info;
+  XML_Parser parser;
+  FIRST_PASS_INFO *first_info;
+  SECOND_PASS_INFO *second_info;
 
-    first_info = calloc (1, sizeof *first_info);
-    second_info = calloc (1, sizeof *second_info);
+  first_info = calloc (1, sizeof *first_info);
+  second_info = calloc (1, sizeof *second_info);
 
-    /* Set up the first pass to count the number of events and
-     * states in the theme file, as well as build thet translation
-     * table.
-     */
-    parser = XML_ParserCreate (NULL);
+  /* Set up the first pass to count the number of events and
+   * states in the theme file, as well as build thet translation
+   * table.
+   */
+  parser = XML_ParserCreate (NULL);
 
-    if (!parser) {
+  if (!parser) {
 
-        logMsg (DBG_GEN, "Couldn't create an XML parsing object: %s\n",
-                (char *)XML_ErrorString (XML_GetErrorCode (parser) ));
-        return XML_PARSER_FAILURE;
+    logMsg (DBG_GEN, "Couldn't create an XML parsing object: %s\n",
+            (char *)XML_ErrorString (XML_GetErrorCode (parser) ));
+    return XML_PARSER_FAILURE;
 
-    }
+  }
 
-    /* Set the counting handlers */
-    XML_SetElementHandler (parser, xmlParseFirstPassStart, xmlParseFirstPassEnd);
-    XML_SetCharacterDataHandler (parser, xmlParseFirstPassChar);
+  /* Set the counting handlers */
+  XML_SetElementHandler (parser, xmlParseFirstPassStart, xmlParseFirstPassEnd);
+  XML_SetCharacterDataHandler (parser, xmlParseFirstPassChar);
 
-    /* Set up data structure to pass */
-    first_info->sound_path = sound_path;
-    XML_SetUserData (parser, first_info);
-
-#if DEBUG_LEVEL & DBG_SETUP
-    logMsg (DBG_SETUP, "Starting first pass of theme file...\n");
-#endif
-
-    if (!XML_Parse (parser, xml_string, strlen (xml_string), 1)) {
-
-        logMsg (DBG_GEN, "Uh Oh! There was an xml parsing error while parsing the xml configuration file:\n");
-        logMsg (DBG_GEN, "\tLine %d: %s\n", XML_GetCurrentLineNumber(parser), (char *)XML_ErrorString ( XML_GetErrorCode (parser) ));
-        return XML_PARSER_FAILURE;
-
-    }
-
-    XML_ParserFree (parser);
-
-    /* Perform the actual parse */
-    parser = XML_ParserCreate (NULL);
-
-    if (!parser) {
-
-        logMsg (DBG_GEN, "Couldn't create an XML parsing object: %s\n",
-                (char *)XML_ErrorString (XML_GetErrorCode (parser) ));
-        return XML_PARSER_FAILURE;
-
-    }
-    /* Set the parsing handlers */
-    XML_SetElementHandler (parser, xmlParseSecondPassStart, xmlParseSecondPassEnd);
-    XML_SetCharacterDataHandler (parser, xmlParseSecondPassChar);
-
-    /* Set up the data structure for the handlers */
-    second_info->event_cnt = event_cnt;
-    second_info->state_cnt = state_cnt;
-    second_info->thresholds = first_info->thresholds;
-    XML_SetUserData (parser, second_info);
+  /* Set up data structure to pass */
+  first_info->sound_path = sound_path;
+  XML_SetUserData (parser, first_info);
 
 #if DEBUG_LEVEL & DBG_SETUP
-    logMsg (DBG_SETUP, "Starting second pass of theme file...\n");
+  logMsg (DBG_SETUP, "Starting first pass of theme file...\n");
 #endif
 
-    if (!XML_Parse (parser, xml_string, strlen (xml_string), 1)) {
+  if (!XML_Parse (parser, xml_string, strlen (xml_string), 1)) {
 
-        logMsg (DBG_GEN, "Uh Oh! There was an xml parsing error while parsing the xml configuration file:\n");
-        logMsg (DBG_GEN, "\tLine %d: %s\n", XML_GetCurrentLineNumber(parser), (char *)XML_ErrorString ( XML_GetErrorCode (parser) ));
-        return XML_PARSER_FAILURE;
+    logMsg (DBG_GEN,
+            "Uh Oh! There was an xml parsing error while parsing the xml configuration file:\n");
+    logMsg (DBG_GEN, "\tLine %d: %s\n", XML_GetCurrentLineNumber(parser),
+            (char *)XML_ErrorString ( XML_GetErrorCode (parser) ));
+    return XML_PARSER_FAILURE;
 
+  }
+
+  XML_ParserFree (parser);
+
+  /* Perform the actual parse */
+  parser = XML_ParserCreate (NULL);
+
+  if (!parser) {
+
+    logMsg (DBG_GEN, "Couldn't create an XML parsing object: %s\n",
+            (char *)XML_ErrorString (XML_GetErrorCode (parser) ));
+    return XML_PARSER_FAILURE;
+
+  }
+  /* Set the parsing handlers */
+  XML_SetElementHandler (parser, xmlParseSecondPassStart, xmlParseSecondPassEnd);
+  XML_SetCharacterDataHandler (parser, xmlParseSecondPassChar);
+
+  /* Set up the data structure for the handlers */
+  second_info->event_cnt = event_cnt;
+  second_info->state_cnt = state_cnt;
+  second_info->thresholds = first_info->thresholds;
+  XML_SetUserData (parser, second_info);
+
+#if DEBUG_LEVEL & DBG_SETUP
+  logMsg (DBG_SETUP, "Starting second pass of theme file...\n");
+#endif
+
+  if (!XML_Parse (parser, xml_string, strlen (xml_string), 1)) {
+
+    logMsg (DBG_GEN,
+            "Uh Oh! There was an xml parsing error while parsing the xml configuration file:\n");
+    logMsg (DBG_GEN, "\tLine %d: %s\n", XML_GetCurrentLineNumber(parser),
+            (char *)XML_ErrorString ( XML_GetErrorCode (parser) ));
+    return XML_PARSER_FAILURE;
+
+  }
+
+  /* Clean up time */
+  XML_ParserFree (parser);
+  /* Free the translation table if any entries exist*/
+  if (trans_table) {
+    struct trans_table *ent, *next;
+
+    for (ent = trans_table, next = ent->next;
+         ent; ent = next, next = ent->next) {
+      xmlThemeFreeTransEntry (ent);
     }
+  }
+  if (first_info->current_tag) {
+    free (first_info->current_tag);
+  }
+  free (first_info);
 
-    /* Clean up time */
-    XML_ParserFree (parser);
-    /* Free the translation table if any entries exist*/
-    if (trans_table) {
-        struct trans_table *ent, *next;
+  if (second_info->current_tag) {
+    free (second_info->current_tag);
+  }
+  if (second_info->thresholds) {
+    free (second_info->thresholds);
+  }
+  free (second_info);
 
-        for (ent = trans_table, next = ent->next;
-             ent; ent = next, next = ent->next) {
-            xmlThemeFreeTransEntry (ent);
-	}
-    }
-    if (first_info->current_tag) {
-        free (first_info->current_tag);
-    }
-    free (first_info);
-
-    if (second_info->current_tag) {
-        free (second_info->current_tag);
-    }
-    if (second_info->thresholds) {
-        free (second_info->thresholds);
-    }
-    free (second_info);
-
-    return XML_PARSER_SUCCESS;
+  return XML_PARSER_SUCCESS;
 
 }
 
@@ -143,190 +148,184 @@ void xmlParseFirstPassStart (void *data, const XML_Char *tag_name,
                              const XML_Char **attribs)
 {
 
-    FIRST_PASS_INFO *info = data;
+  FIRST_PASS_INFO *info = data;
 
-    info->current_tag = (char *)realloc (info->current_tag, strlen (tag_name) + 1);
-    strcpy (info->current_tag, tag_name);
+  info->current_tag = (char *)realloc (info->current_tag, strlen (tag_name) + 1);
+  strcpy (info->current_tag, tag_name);
 
-    if (!strcasecmp (tag_name, XML_SOUNDS_TOKEN)) {
-        info->context = SOUNDS_CONTEXT;
-    }
-    else if (info->context == SOUNDS_CONTEXT && !strcasecmp (tag_name, XML_SOUND_TOKEN)) {
+  if (!strcasecmp (tag_name, XML_SOUNDS_TOKEN)) {
+    info->context = SOUNDS_CONTEXT;
+  } else if (info->context == SOUNDS_CONTEXT
+             && !strcasecmp (tag_name, XML_SOUND_TOKEN)) {
 
-        info->context = SOUND_CONTEXT;
-        info->cur_ent = xmlThemeCreateTransEntry ();
+    info->context = SOUND_CONTEXT;
+    info->cur_ent = xmlThemeCreateTransEntry ();
 
 #if DEBUG_LEVEL & DBG_SETUP
-        logMsg (DBG_SETUP, "\tExtracting sound definition:\n");
+    logMsg (DBG_SETUP, "\tExtracting sound definition:\n");
 #endif
 
-    }
-    else if (!strcasecmp (tag_name, XML_STATES_TOKEN)) {
-        info->context = STATE_CONTEXT;
-    }
-    else if (info->context == STATE_CONTEXT && !strcasecmp (tag_name, XML_STATE_TOKEN)) {
+  } else if (!strcasecmp (tag_name, XML_STATES_TOKEN)) {
+    info->context = STATE_CONTEXT;
+  } else if (info->context == STATE_CONTEXT
+             && !strcasecmp (tag_name, XML_STATE_TOKEN)) {
 
-        info->thresholds = (int *)realloc (info->thresholds, sizeof (int) * (info->states + 1));
-        info->thresholds[info->states] = 0;
+    info->thresholds = (int *)realloc (info->thresholds,
+                                       sizeof (int) * (info->states + 1));
+    info->thresholds[info->states] = 0;
 
-    }
-    else if (info->context == STATE_CONTEXT && !strcasecmp (tag_name, XML_THRESHOLD_TOKEN)) {
-        info->thresholds[info->states]++;
-    }
+  } else if (info->context == STATE_CONTEXT
+             && !strcasecmp (tag_name, XML_THRESHOLD_TOKEN)) {
+    info->thresholds[info->states]++;
+  }
 
 }
 
 void xmlParseFirstPassEnd (void *data, const XML_Char *tag_name)
 {
 
-    FIRST_PASS_INFO *info = data;
+  FIRST_PASS_INFO *info = data;
 
-    if (!strcasecmp (tag_name, XML_SOUNDS_TOKEN)) {
-        info->context = NO_CONTEXT;
-    }
-    else if (info->context == SOUND_CONTEXT && !strcasecmp (tag_name, XML_SOUND_TOKEN)) {
-        info->context = SOUNDS_CONTEXT;
-    }
-    else if (!strcasecmp (tag_name, XML_STATES_TOKEN)) {
-        info->context = NO_CONTEXT;
-    }
-    else if (!strcasecmp (tag_name, XML_STATE_TOKEN)) {
-        info->states++;
-    }
+  if (!strcasecmp (tag_name, XML_SOUNDS_TOKEN)) {
+    info->context = NO_CONTEXT;
+  } else if (info->context == SOUND_CONTEXT
+             && !strcasecmp (tag_name, XML_SOUND_TOKEN)) {
+    info->context = SOUNDS_CONTEXT;
+  } else if (!strcasecmp (tag_name, XML_STATES_TOKEN)) {
+    info->context = NO_CONTEXT;
+  } else if (!strcasecmp (tag_name, XML_STATE_TOKEN)) {
+    info->states++;
+  }
 
 }
 
 void xmlParseFirstPassChar (void *data, const XML_Char *s, int len)
 {
 
-    FIRST_PASS_INFO *info = data;
-    char *string = createXmlNormalizedString ((char *)s, len);
+  FIRST_PASS_INFO *info = data;
+  char *string = createXmlNormalizedString ((char *)s, len);
 
-    if (string != NULL) {
+  if (string != NULL) {
 
-        if (info->context == SOUND_CONTEXT) {
+    if (info->context == SOUND_CONTEXT) {
 
-            if (!strcasecmp (info->current_tag, XML_NAME_TOKEN)) {
+      if (!strcasecmp (info->current_tag, XML_NAME_TOKEN)) {
 
-                info->cur_ent->name = malloc (strlen (string) + 1);
-                strcpy (info->cur_ent->name, string);
-
-#if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\tName:        [%s]\n", string);
-#endif
-
-            }
+        info->cur_ent->name = malloc (strlen (string) + 1);
+        strcpy (info->cur_ent->name, string);
 
 #if DEBUG_LEVEL & DBG_SETUP
-            if (!strcasecmp (info->current_tag, XML_CATEGORY_TOKEN)) {
-                logMsg (DBG_SETUP, "\t\tCategory:    [%s]\n", string);
-                info->cur_ent->category = malloc (strlen (string) + 1);
-                strcpy (info->cur_ent->category, string);
-            }
-            else if (!strcasecmp (info->current_tag, XML_TYPE_TOKEN)) {
-                logMsg (DBG_SETUP, "\t\tType:        [%s]\n", string);
-                info->cur_ent->type = malloc (strlen (string) + 1);
-                strcpy (info->cur_ent->type, string);
-            }
-            else if (!strcasecmp (info->current_tag, XML_FORMAT_TOKEN)) {
-                logMsg (DBG_SETUP, "\t\tFormat:      [%s]\n", string);
-                info->cur_ent->format = malloc (strlen (string) + 1);
-                strcpy (info->cur_ent->format, string);
-            }
-            else if (!strcasecmp (info->current_tag, XML_DESCRIPTION_TOKEN)) {
-                logMsg (DBG_SETUP, "\t\tDescription: [%s]\n", string);
-                info->cur_ent->desc = malloc (strlen (string) + 1);
-                strcpy (info->cur_ent->desc, string);
-            }
+        logMsg (DBG_SETUP, "\t\tName:        [%s]\n", string);
 #endif
 
-            if (!strcasecmp (info->current_tag, XML_PATH_TOKEN)) {
+      }
 
 #if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\tPath:        [%s]...\n", string);
+      if (!strcasecmp (info->current_tag, XML_CATEGORY_TOKEN)) {
+        logMsg (DBG_SETUP, "\t\tCategory:    [%s]\n", string);
+        info->cur_ent->category = malloc (strlen (string) + 1);
+        strcpy (info->cur_ent->category, string);
+      } else if (!strcasecmp (info->current_tag, XML_TYPE_TOKEN)) {
+        logMsg (DBG_SETUP, "\t\tType:        [%s]\n", string);
+        info->cur_ent->type = malloc (strlen (string) + 1);
+        strcpy (info->cur_ent->type, string);
+      } else if (!strcasecmp (info->current_tag, XML_FORMAT_TOKEN)) {
+        logMsg (DBG_SETUP, "\t\tFormat:      [%s]\n", string);
+        info->cur_ent->format = malloc (strlen (string) + 1);
+        strcpy (info->cur_ent->format, string);
+      } else if (!strcasecmp (info->current_tag, XML_DESCRIPTION_TOKEN)) {
+        logMsg (DBG_SETUP, "\t\tDescription: [%s]\n", string);
+        info->cur_ent->desc = malloc (strlen (string) + 1);
+        strcpy (info->cur_ent->desc, string);
+      }
 #endif
-                info->cur_ent->path = malloc (strlen (string) + strlen (info->sound_path) + 1);
-                strcpy (info->cur_ent->path, info->sound_path);
-                strcat (info->cur_ent->path, string);
 
-            }
+      if (!strcasecmp (info->current_tag, XML_PATH_TOKEN)) {
 
-        }
+#if DEBUG_LEVEL & DBG_SETUP
+        logMsg (DBG_SETUP, "\t\tPath:        [%s]...\n", string);
+#endif
+        info->cur_ent->path = malloc (strlen (string) + strlen (info->sound_path) + 1);
+        strcpy (info->cur_ent->path, info->sound_path);
+        strcat (info->cur_ent->path, string);
+
+      }
 
     }
 
-    freeXmlNormalizedString (string);
+  }
+
+  freeXmlNormalizedString (string);
 }
 
 struct trans_table *xmlThemeCreateTransEntry (void)
 {
 
-    struct trans_table *ent = calloc(1, sizeof *ent);
+  struct trans_table *ent = calloc(1, sizeof *ent);
 
-    if (ent) {
-        ent->next = trans_table;
-        trans_table = ent;
-    }
-    return ent;
+  if (ent) {
+    ent->next = trans_table;
+    trans_table = ent;
+  }
+  return ent;
 
 }
 
 char *xmlThemeLookupTransPath (char *name)
 {
 
-    char *path = NULL;
-    struct trans_table *ent, *prev;
+  char *path = NULL;
+  struct trans_table *ent, *prev;
 
-    for (ent = trans_table, prev = NULL; ent; prev = ent, ent = ent->next) {
+  for (ent = trans_table, prev = NULL; ent; prev = ent, ent = ent->next) {
 
-        if (ent->name && !strcasecmp (ent->name, name)) {
+    if (ent->name && !strcasecmp (ent->name, name)) {
 
-            path = malloc (strlen (ent->path) + 1);
-            strcpy (path, ent->path);
+      path = malloc (strlen (ent->path) + 1);
+      strcpy (path, ent->path);
 
-            /* Remove the entry from the list for speed. Also check
-             * if we've emptied the list.
-             */
-            if (prev) {
-                prev->next = ent->next;
-	    }
-            else {
-                trans_table = NULL;
-	    }
-            xmlThemeFreeTransEntry (ent);
-            break;
-
-        }
+      /* Remove the entry from the list for speed. Also check
+       * if we've emptied the list.
+       */
+      if (prev) {
+        prev->next = ent->next;
+      } else {
+        trans_table = NULL;
+      }
+      xmlThemeFreeTransEntry (ent);
+      break;
 
     }
 
-    return path;
+  }
+
+  return path;
 
 }
 
 void xmlThemeFreeTransEntry (struct trans_table *entry)
 {
 
-    /* Free all members of the structure */
-    if (entry->name) {
-        free (entry->name);
-    }
-    if (entry->category) {
-        free (entry->category);
-    }
-    if (entry->type) {
-        free (entry->type);
-    }
-    if (entry->format) {
-        free (entry->format);
-    }
-    if (entry->desc) {
-        free (entry->desc);
-    }
-    if (entry->path) {
-        free (entry->path);
-    }
-    free (entry);
+  /* Free all members of the structure */
+  if (entry->name) {
+    free (entry->name);
+  }
+  if (entry->category) {
+    free (entry->category);
+  }
+  if (entry->type) {
+    free (entry->type);
+  }
+  if (entry->format) {
+    free (entry->format);
+  }
+  if (entry->desc) {
+    free (entry->desc);
+  }
+  if (entry->path) {
+    free (entry->path);
+  }
+  free (entry);
 
 }
 
@@ -334,284 +333,275 @@ void xmlParseSecondPassStart (void *data, const XML_Char *tag_name,
                               const XML_Char **attribs)
 {
 
-    SECOND_PASS_INFO *info = data;
-    int i;
+  SECOND_PASS_INFO *info = data;
+  int i;
 
-    info->current_tag = (char *)realloc (info->current_tag, strlen (tag_name) + 1);
-    strcpy (info->current_tag, tag_name);
+  info->current_tag = (char *)realloc (info->current_tag, strlen (tag_name) + 1);
+  strcpy (info->current_tag, tag_name);
 
-    if (!strcasecmp (tag_name, XML_THEME_TOKEN)) {
+  if (!strcasecmp (tag_name, XML_THEME_TOKEN)) {
 
-        for (i = 0;  attribs[i] != NULL; i += 2) {
-
-#if DEBUG_LEVEL & DBG_SETUP
-            if (!strcasecmp (attribs[i], XML_NAME_TOKEN)) {
-                logMsg (DBG_SETUP, "\tTheme Name: [%s]\n", attribs[i+1]);
-	    }
-#endif
-
-        }
-
-    }
-    else if (!strcasecmp (tag_name, XML_EVENTS_TOKEN)) {
-
-        info->context = EVENT_CONTEXT;
-
-    }
-    else if (info->context == EVENT_CONTEXT) {
-
-        if (!strcasecmp (tag_name, XML_EVENT_TOKEN)) {
+    for (i = 0;  attribs[i] != NULL; i += 2) {
 
 #if DEBUG_LEVEL & DBG_SETUP
-            logMsg (DBG_SETUP, "\tLoading Theme Event Sound:\n");
+      if (!strcasecmp (attribs[i], XML_NAME_TOKEN)) {
+        logMsg (DBG_SETUP, "\tTheme Name: [%s]\n", attribs[i+1]);
+      }
 #endif
 
-        }
-
     }
-    else if (!strcasecmp (tag_name, XML_STATES_TOKEN)) {
 
-        info->context = STATE_CONTEXT;
+  } else if (!strcasecmp (tag_name, XML_EVENTS_TOKEN)) {
 
-    }
-    else if (info->context == STATE_CONTEXT) {
+    info->context = EVENT_CONTEXT;
 
-        if (!strcasecmp (tag_name, XML_STATE_TOKEN)) {
+  } else if (info->context == EVENT_CONTEXT) {
+
+    if (!strcasecmp (tag_name, XML_EVENT_TOKEN)) {
 
 #if DEBUG_LEVEL & DBG_SETUP
-            logMsg (DBG_SETUP, "\tLoad Theme State Sound:\n");
-            logMsg (DBG_SETUP, "\t\tState has [%d] thresholds.\n", info->thresholds[info->thresh_index]);
+      logMsg (DBG_SETUP, "\tLoading Theme Event Sound:\n");
 #endif
-
-            /* Allocate the state */
-            mixerAllocNewState (*info->state_cnt, info->thresholds[info->thresh_index]);
-            info->thresh_cnt = 0;
-
-        }
-        else if (!strcasecmp (tag_name, XML_THRESHOLD_TOKEN)) {
-
-#if DEBUG_LEVEL & DBG_SETUP
-            logMsg (DBG_SETUP, "\t\tAdding threshold...\n");
-#endif
-
-            info->context = THRESHOLD_CONTEXT;
-
-        }
 
     }
+
+  } else if (!strcasecmp (tag_name, XML_STATES_TOKEN)) {
+
+    info->context = STATE_CONTEXT;
+
+  } else if (info->context == STATE_CONTEXT) {
+
+    if (!strcasecmp (tag_name, XML_STATE_TOKEN)) {
+
+#if DEBUG_LEVEL & DBG_SETUP
+      logMsg (DBG_SETUP, "\tLoad Theme State Sound:\n");
+      logMsg (DBG_SETUP, "\t\tState has [%d] thresholds.\n",
+              info->thresholds[info->thresh_index]);
+#endif
+
+      /* Allocate the state */
+      mixerAllocNewState (*info->state_cnt, info->thresholds[info->thresh_index]);
+      info->thresh_cnt = 0;
+
+    } else if (!strcasecmp (tag_name, XML_THRESHOLD_TOKEN)) {
+
+#if DEBUG_LEVEL & DBG_SETUP
+      logMsg (DBG_SETUP, "\t\tAdding threshold...\n");
+#endif
+
+      info->context = THRESHOLD_CONTEXT;
+
+    }
+
+  }
 
 }
 
 void xmlParseSecondPassEnd (void *data, const XML_Char *tag_name)
 {
 
-    SECOND_PASS_INFO *info = data;
+  SECOND_PASS_INFO *info = data;
 
-    if (info->context == EVENT_CONTEXT && !strcasecmp (tag_name, XML_EVENTS_TOKEN)) {
+  if (info->context == EVENT_CONTEXT
+      && !strcasecmp (tag_name, XML_EVENTS_TOKEN)) {
 
-        info->context = NO_CONTEXT;
+    info->context = NO_CONTEXT;
 
-    }
-    else if (info->context == EVENT_CONTEXT && !strcasecmp (tag_name, XML_EVENT_TOKEN)) {
+  } else if (info->context == EVENT_CONTEXT
+             && !strcasecmp (tag_name, XML_EVENT_TOKEN)) {
 
-        /* Check if we have all the necessary information to create the event entry */
-        if (info->path == NULL || info->name == NULL) {
+    /* Check if we have all the necessary information to create the event entry */
+    if (info->path == NULL || info->name == NULL) {
 
 #if DEBUG_LEVEL & DBG_SETUP
-            logMsg (DBG_GEN, "\t\tFailed to load event sound:\n");
-            logMsg (DBG_GEN, "\t\t\tNo name identifying the event sound provided or unable to translate name to path.\n");
+      logMsg (DBG_GEN, "\t\tFailed to load event sound:\n");
+      logMsg (DBG_GEN,
+              "\t\t\tNo name identifying the event sound provided or unable to translate name to path.\n");
 #endif
 
-        }
-        else {
+    } else {
 
-            /* Note: this function increments info->event_cnt for us, since
-             * event_cnt is a pointer to the parser's global event count.
-             */
-            if (!parserLoadEventSndDir (info->name, info->path)) {
+      /* Note: this function increments info->event_cnt for us, since
+       * event_cnt is a pointer to the parser's global event count.
+       */
+      if (!parserLoadEventSndDir (info->name, info->path)) {
 
-                logMsg (DBG_GEN, "Error loading sounds from: %s\n", info->path);
-                return;
+        logMsg (DBG_GEN, "Error loading sounds from: %s\n", info->path);
+        return;
 
-            }
-
-        }
-
-        if (info->path) {
-            free (info->path);
-	}
-        info->path = NULL;
-
-        if (info->name) {
-            free (info->name);
-	}
-        info->name = NULL;
+      }
 
     }
-    else if (info->context == STATE_CONTEXT && !strcasecmp (tag_name, XML_STATES_TOKEN)) {
 
-        STATE_ENTRY *entry = NULL;
+    if (info->path) {
+      free (info->path);
+    }
+    info->path = NULL;
 
-        /* Check if we grabbed the name during the parse */
-        if (info->name == NULL) {
+    if (info->name) {
+      free (info->name);
+    }
+    info->name = NULL;
+
+  } else if (info->context == STATE_CONTEXT
+             && !strcasecmp (tag_name, XML_STATES_TOKEN)) {
+
+    STATE_ENTRY *entry = NULL;
+
+    /* Check if we grabbed the name during the parse */
+    if (info->name == NULL) {
 
 #if DEBUG_LEVEL & DBG_GEN
-            logMsg (DBG_GEN, "Failed to load state sound:\n");
-            logMsg (DBG_GEN, "\tNo name identifying the state sound provided.\n");
+      logMsg (DBG_GEN, "Failed to load state sound:\n");
+      logMsg (DBG_GEN, "\tNo name identifying the state sound provided.\n");
 #endif
-            return;
-
-        }
-
-        /* Create the state sound entry in the sound table */
-        entry = engineAllocStateEntry (*info->state_cnt);
-        engineSoundTableInsertState (info->name, entry);
-
-        free (info->name);
-        info->name = NULL;
-
-        (*info->state_cnt)++;
-        info->context = NO_CONTEXT;
+      return;
 
     }
-    else if (info->context == STATE_CONTEXT && !strcasecmp (tag_name, XML_STATE_TOKEN)) {
 
-        info->thresh_index++;
+    /* Create the state sound entry in the sound table */
+    entry = engineAllocStateEntry (*info->state_cnt);
+    engineSoundTableInsertState (info->name, entry);
 
-    }
-    else if (info->context == THRESHOLD_CONTEXT && !strcasecmp (tag_name, XML_THRESHOLD_TOKEN)) {
+    free (info->name);
+    info->name = NULL;
 
-        parserLoadStateSndDir (info->thresh_cnt, info->l_bound, info->h_bound, info->path, info->fade);
+    (*info->state_cnt)++;
+    info->context = NO_CONTEXT;
 
-        free (info->path);
-        info->path = NULL;
+  } else if (info->context == STATE_CONTEXT
+             && !strcasecmp (tag_name, XML_STATE_TOKEN)) {
 
-        info->thresh_cnt++;
-        info->context = STATE_CONTEXT;
+    info->thresh_index++;
 
-    }
-    else if (!strcasecmp (tag_name, XML_THEME_TOKEN)) {
+  } else if (info->context == THRESHOLD_CONTEXT
+             && !strcasecmp (tag_name, XML_THRESHOLD_TOKEN)) {
+
+    parserLoadStateSndDir (info->thresh_cnt, info->l_bound, info->h_bound,
+                           info->path, info->fade);
+
+    free (info->path);
+    info->path = NULL;
+
+    info->thresh_cnt++;
+    info->context = STATE_CONTEXT;
+
+  } else if (!strcasecmp (tag_name, XML_THEME_TOKEN)) {
 
 #if DEBUG_LEVEL & DBG_SETUP
-        logMsg (DBG_SETUP, "Finished Loading theme. Resuming configuration parsing...\n");
-        logMsg (DBG_SETUP, "\n");
+    logMsg (DBG_SETUP,
+            "Finished Loading theme. Resuming configuration parsing...\n");
+    logMsg (DBG_SETUP, "\n");
 #endif
 
-    }
+  }
 
 }
 
 void xmlParseSecondPassChar (void *data, const XML_Char *s, int len)
 {
 
-    SECOND_PASS_INFO *info = data;
-    char *string = createXmlNormalizedString ((char *)s, len);
+  SECOND_PASS_INFO *info = data;
+  char *string = createXmlNormalizedString ((char *)s, len);
 
-    if (string != NULL) {
+  if (string != NULL) {
 
-        if (info->context == EVENT_CONTEXT) {
+    if (info->context == EVENT_CONTEXT) {
 
-            if (!strcasecmp (info->current_tag, XML_NAME_TOKEN)) {
+      if (!strcasecmp (info->current_tag, XML_NAME_TOKEN)) {
 
-                info->name = malloc (strlen (string) + 1);
-                strcpy (info->name, string);
+        info->name = malloc (strlen (string) + 1);
+        strcpy (info->name, string);
 #if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\tName:            [%s]\n", string);
+        logMsg (DBG_SETUP, "\t\tName:            [%s]\n", string);
 #endif
 
-            }
-            else if (!strcasecmp (info->current_tag, XML_SOUND_TOKEN)) {
+      } else if (!strcasecmp (info->current_tag, XML_SOUND_TOKEN)) {
 
-                info->path = xmlThemeLookupTransPath (string);
+        info->path = xmlThemeLookupTransPath (string);
 #if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\tSound:           [%s]\n", string);
-                if (info->path) {
-                    logMsg (DBG_SETUP, "\t\tTranslated ->    [%s]\n", info->path);
-		}
-                else {
-                    logMsg (DBG_SETUP, "\t\tTranslated ->    [(null)]\n");
-		}
-#endif
-
-            }
-#if DEBUG_LEVEL & DBG_SETUP
-            else if (!strcasecmp (info->current_tag, XML_DESCRIPTION_TOKEN)) {
-                logMsg (DBG_SETUP, "\t\tDescription:     [%s]\n", string);
-	    }
-#endif
-
-
+        logMsg (DBG_SETUP, "\t\tSound:           [%s]\n", string);
+        if (info->path) {
+          logMsg (DBG_SETUP, "\t\tTranslated ->    [%s]\n", info->path);
+        } else {
+          logMsg (DBG_SETUP, "\t\tTranslated ->    [(null)]\n");
         }
-        else if (info->context == STATE_CONTEXT) {
-
-            if (!strcasecmp (info->current_tag, XML_NAME_TOKEN)) {
-
-                info->name = malloc (strlen (string) + 1);
-                strcpy (info->name, string);
-
-#if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\tName:        [%s]\n", string);
 #endif
 
-            }
+      }
 #if DEBUG_LEVEL & DBG_SETUP
-            else if (!strcasecmp (info->current_tag, XML_DESCRIPTION_TOKEN)) {
-                logMsg (DBG_SETUP, "\t\tDescription: [%s]\n", string);
-	    }
+      else if (!strcasecmp (info->current_tag, XML_DESCRIPTION_TOKEN)) {
+        logMsg (DBG_SETUP, "\t\tDescription:     [%s]\n", string);
+      }
 #endif
 
+
+    } else if (info->context == STATE_CONTEXT) {
+
+      if (!strcasecmp (info->current_tag, XML_NAME_TOKEN)) {
+
+        info->name = malloc (strlen (string) + 1);
+        strcpy (info->name, string);
+
+#if DEBUG_LEVEL & DBG_SETUP
+        logMsg (DBG_SETUP, "\t\tName:        [%s]\n", string);
+#endif
+
+      }
+#if DEBUG_LEVEL & DBG_SETUP
+      else if (!strcasecmp (info->current_tag, XML_DESCRIPTION_TOKEN)) {
+        logMsg (DBG_SETUP, "\t\tDescription: [%s]\n", string);
+      }
+#endif
+
+    } else if (info->context == THRESHOLD_CONTEXT) {
+
+      if (!strcasecmp (info->current_tag, XML_LEVEL_TOKEN)) {
+
+        /* First figure out lower bound */
+        if (info->thresh_cnt > 0) {
+
+          THRESHOLD *thresh = mixerGetThresholdEntry (*info->state_cnt,
+                              info->thresh_cnt - 1);
+          info->l_bound = thresh->h_bound;
+
+        } else {
+          info->l_bound = 0.0;
         }
-        else if (info->context == THRESHOLD_CONTEXT) {
 
-            if (!strcasecmp (info->current_tag, XML_LEVEL_TOKEN)) {
-
-                /* First figure out lower bound */
-                if (info->thresh_cnt > 0) {
-
-                    THRESHOLD *thresh = mixerGetThresholdEntry (*info->state_cnt, info->thresh_cnt - 1);
-                    info->l_bound = thresh->h_bound;
-
-                }
-                else {
-                    info->l_bound = 0.0;
-		}
-
-                info->h_bound = strtod (string, NULL);
+        info->h_bound = strtod (string, NULL);
 
 #if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\t\tLower bound: [%lf]\n", info->l_bound);
-                logMsg (DBG_SETUP, "\t\t\tUpper bound: [%lf]\n", info->h_bound);
+        logMsg (DBG_SETUP, "\t\t\tLower bound: [%lf]\n", info->l_bound);
+        logMsg (DBG_SETUP, "\t\t\tUpper bound: [%lf]\n", info->h_bound);
 #endif
 
-            }
-            else if (!strcasecmp (info->current_tag, XML_FADE_TOKEN)) {
+      } else if (!strcasecmp (info->current_tag, XML_FADE_TOKEN)) {
 
-                info->fade = strtod (string, NULL);
+        info->fade = strtod (string, NULL);
 
 #if DEBUG_LEVEL & DBG_SETUP
-                logMsg (DBG_SETUP, "\t\t\tFade: [%lf]\n", info->fade);
+        logMsg (DBG_SETUP, "\t\t\tFade: [%lf]\n", info->fade);
 #endif
 
-            }
-            else if (!strcasecmp (info->current_tag, XML_SOUND_TOKEN)) {
+      } else if (!strcasecmp (info->current_tag, XML_SOUND_TOKEN)) {
 
-                info->path = xmlThemeLookupTransPath (string);
+        info->path = xmlThemeLookupTransPath (string);
 
 #if DEBUG_LEVEL & DBG_SETUP
-                if (info->path) {
-                    logMsg (DBG_SETUP, "\t\t\tAdding sound from: [%s]\n", info->path);
-		}
-                else {
-                    logMsg (DBG_SETUP, "\t\t\tLookup on sound [%s] failed.\n", info->path);
-		}
-#endif
-
-            }
-
+        if (info->path) {
+          logMsg (DBG_SETUP, "\t\t\tAdding sound from: [%s]\n", info->path);
+        } else {
+          logMsg (DBG_SETUP, "\t\t\tLookup on sound [%s] failed.\n", info->path);
         }
+#endif
+
+      }
 
     }
 
-    freeXmlNormalizedString (string);
+  }
+
+  freeXmlNormalizedString (string);
 
 }

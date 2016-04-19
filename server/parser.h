@@ -37,8 +37,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * just parsed
  */
 struct tok {
-	char *token;
-	char *remainder;
+  char *token;
+  char *remainder;
 };
 
 #define PARSER_BUFFER_LEN 1024
@@ -130,7 +130,7 @@ int parserParseThreshold (FILE *config_file, int thresh_cnt);
  * loaded and false otherwise.
  */
 int parserLoadStateSndDir (int thresh_cnt, double l_bound, double h_bound,
-						   char *snd_path, double fade);
+                           char *snd_path, double fade);
 
 /* Returns the name of the directory as part of a given path.
  * NULL is returned if there is no base directory name.
@@ -152,7 +152,7 @@ int parserImportStackAdd (char *dir);
  * has been omitted.
  */
 int parserScanDir (char *dir, struct dirent ***namelist,
-				   int (*compar)(const void *, const void *));
+                   int (*compar)(const void *, const void *));
 
 /* Comparator function for the internal scandir */
 int parserScanCompar (const void *v1, const void *v2);
